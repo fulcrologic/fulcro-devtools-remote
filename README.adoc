@@ -1,0 +1,77 @@
+:source-highlighter: coderay
+:source-language: clojure
+:toc:
+:toc-placement: preamble
+:sectlinks:
+:sectanchors:
+:sectnums:
+:d2: /opt/homebrew/bin/d2
+
+== Devtools Remote
+
+Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using
+Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro
+remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
+
+The use cases are:
+
+* A Chrome Extension that creates one or more panels (using Fulcro) and the target is any web-page based application
+(doesn't have to be Fulcro).
+* An Electron app whose UI is written in Fulcro, and talks over websockets to "whatever" using Taoennso's websockets library.
+
+=== Chrome
+
+The goal is that your mental model is this:
+
+[d2]
+-----
+Fulcro UI (Chrome Extension) <-> CLJS running in Web Page: Fulcro remote
+-----
+
+even though a Chrome extensions require transferring the message through multiple hops for security. The devtool has to run a background worker, which can communicate to/from either the extension or the page, but this communication is done via ports and on-page events of the target web page.
+
+So, in reality, the comms look more like this:
+
+[d2]
+-----
+Chrome Extension <-> Background Worker: port
+Background Worker <-> Content Script: port
+Content Script <-> Target CLJS: events
+-----
+
+=== Electron
+
+The same as chrome, but different communication bits. We
+want you to see:
+
+[d2]
+-----
+Fulcro UI (Electron UI) <-> CLJ(s) Program: Fulcro remote
+-----
+
+when in reality the chain of communication is:
+
+[d2]
+-----
+Electron UI <-> Background: IPC
+Background <-> This Library: websockets
+This Library <-> Target Code
+-----
+
+== Copyright and License
+
+Copyright (c) 2017-2022, Fulcrologic, LLC
+The MIT License (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

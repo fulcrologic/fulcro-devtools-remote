@@ -1,0 +1,68 @@
+{
+  "name": "fulcro-inspect-electron",
+  "version": "4.0.0-alpha1",
+  "description": "Electron Version of Fulcro Inspect",
+  "homepage": "https://github.com/fulcrologic/fulcro-inspect",
+  "main": "js/background/main.js",
+  "author": {
+    "name": "Tony Kay",
+    "email": "tony@fulcrologic.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com:/fulcrologic/fulcro-inspect.git",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "electron-settings": "^4.0.4",
+    "express": "^4.21.1",
+    "express-ws": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^32.2.5",
+    "electron-builder": "^25.1.8"
+  },
+  "scripts": {
+    "postinstall": "install-app-deps",
+    "start": "npm install && electron ./app",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.fulcrologic.fulcro.inspect",
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150
+        },
+        {
+          "x": 240,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "icon": "build/icon.ico"
+    },
+    "nsis": {}
+  }
+}
