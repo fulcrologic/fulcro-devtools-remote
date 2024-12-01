@@ -9,15 +9,21 @@
 
 == Devtools Remote
 
-Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using
-Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro
-remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
+Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
 
 The use cases are:
 
-* A Chrome Extension that creates one or more panels (using Fulcro) and the target is any web-page based application
-(doesn't have to be Fulcro).
-* An Electron app whose UI is written in Fulcro, and talks over websockets to "whatever" using Taoennso's websockets library.
+* A Chrome Extension that creates one or more panels (using Fulcro) and the target is any web-page based application (doesn't have to be Fulcro).
+* An Electron app whose UI is written in Fulcro, and talks over websockets to "whatever" using the Sente websockets library.
+
+The target app can be anything that can run Sente as a Server (CLJC). Pathom is the suggested library for implementing the code on the target that your Devtool will talk to.
+
+IF The target of your tool is a Fulcro application (as it is for Fulcro Inspect), then there is a little additional tooling where you can install an extra dev-time remote on your target application so that the Target can initiate communications with the Tool. Thus you'd have:
+
+[d2]
+-----
+Target (Fulcro) <-> Dev Tool (Fulcro)
+-----
 
 === Chrome
 
