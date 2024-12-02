@@ -9,6 +9,8 @@
 
 == Devtools Remote
 
+INCOMPLETE. WORK IN PROGRESS. Do not use.
+
 Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
 
 The use cases are:
