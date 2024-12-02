@@ -17,20 +17,19 @@
                                   :output-dir       "shells/chrome/js/extension"
                                   :asset-path       "js/extension"
                                   :runtime          :custom
-                                  :compiler-options {:closure-output-charset "US-ASCII"}
+                                  :compiler-options {}
                                   :modules          {:service-worker {:init-fn com.fulcrologic.devtools.chrome.background-worker/init}}}
           :chrome-content-script {:target           :browser
                                   :output-dir       "shells/chrome/js/content-script"
                                   :asset-path       "js/content-script"
-                                  :compiler-options {:closure-output-charset "US-ASCII"}
+                                  :compiler-options {:closure-output-charset "US-ASCII"
+                                                     :optimizations          :simple}
                                   :modules          {:main {:entries [com.fulcrologic.devtools.chrome.content-script]}}}
           :chrome-devtool        {:target           :esm
                                   :runtime          :custom
                                   :output-dir       "shells/chrome/js/devtool"
                                   :asset-path       "js/devtool"
-                                  :compiler-options {:closure-output-charset "US-ASCII"
-                                                     :source-map             true
-                                                     :optimizations          :simple}
+                                  :compiler-options {}
                                   :modules          {:main {:entries [devtool.chrome-app]}}}
 
           :electron-main         {:target           :node-script

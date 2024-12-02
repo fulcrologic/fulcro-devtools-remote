@@ -22,11 +22,12 @@
         EQL        (mk/eql message)
         processor  (get @target-processors target-id)
         request-id (mk/request-id message)]
-    (log/debug "Devtools Message received" message)
+    (log/info "Target trying to process message from background script:" message)
     #?(:cljs
        (if (and EQL processor request-id)
          (async/go
            (try
+             (log/info "Using async processor for" target-id)
              (let [result (async/<! (processor EQL))]
                (push! target-id {mk/response   result
                                  mk/request-id request-id}))
@@ -34,7 +35,11 @@
                (push! target-id {mk/request-id request-id
                                  mk/error      (ex-message e)})
                (log/error e "Devtool client side processor failed."))))
-         (log/error "Malformed request from devtool" message)))))
+         (log/error {:msg              "Malformed request"
+                     :event            message
+                     :target-id        target-id
+                     :EQL              EQL
+                     :processor-found? (boolean processor)})))))
 
 (defn- event-data
   "Decode a js event"
@@ -51,6 +56,9 @@
   #?(:cljs
      (.addEventListener js/window "message"
        (fn [^js event]
+         (js/console.log "Target helper code saw event" event)
+         (when (isoget (.-data event) "describe-targets")
+           (.postMessage js/window (clj->js {"devtool-targets" (encode/write (keys @target-processors))}) "*"))
          (when (devtool-message? event)
            (handle-devtool-message (event-data event))))
        false)))
@@ -63,6 +71,7 @@
        (let [data (-> data
                     (assoc mk/target-id target-id)
                     (utils/strip-lambdas))]
+         (log/info "Target sending message to content script" data)
          (.postMessage js/window (clj->js {constants/target->content-script-key (encode/write data)}) "*"))
        (catch :default e
          (log/error e "Cannot send devtool message.")))))
@@ -76,9 +85,10 @@
   []
   #?(:cljs
      (do
+       (log/info "Target setting marker on document")
        (js/document.documentElement.setAttribute constants/chrome-content-script-marker true)
        (when-not @started?*
-         (log/debug "Installing Fulcrologic Devtools Communication" {})
+         (log/info "Installing Fulcrologic Devtools Communication" {})
          (reset! started?* true)
          (listen-for-content-script-messages!)))))
 
@@ -97,8 +107,6 @@
   [target-description async-pathom-processor]
   (when (and (or DEBUG INSPECT) (not= "disabled" INSPECT))
     (let [target-id (random-uuid)]
-      (log/debug "Devtool registered target" target-id)
-      (swap! target-processors assoc target-id async-pathom-processor)
-      (push! target-id {mk/target-id target-id
-                        mk/response target-description})
+      (log/debug "Target activated by application on web page" target-id target-description)
+      (vswap! target-processors assoc target-id async-pathom-processor)
       target-id)))

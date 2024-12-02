@@ -22,8 +22,9 @@
 
 (defn- listen-to-service-worker! [^js port push-handler]
   (.addListener (.-onMessage port)
-    (fn [msg]
-      (let [decoded-message  (encode/read (isoget msg "data"))
+    (fn [^js msg]
+      (js/console.log "Devtool layer received service worker message" msg)
+      (let [decoded-message  (encode/read msg)
             request-id       (mk/request-id decoded-message)
             response-channel (when request-id
                                (get @active-requests request-id))]
@@ -44,7 +45,8 @@
   port)
 
 (defn- send-to-target! [port target-id request-id EQL]
-  (.postMessage port (clj->js {constants/devtool->background-script-key (encode/write
+  (.postMessage port (clj->js {"tab-id"                                 current-tab-id
+                               constants/devtool->background-script-key (encode/write
                                                                           {mk/request-id request-id
                                                                            mk/target-id  target-id
                                                                            mk/eql        EQL
@@ -60,6 +62,7 @@
    "
   [push-notification-handler]
   (let [service-worker-port (js/chrome.runtime.connect #js {:name constants/devtool-port-name})]
+    (log/info "Devtool remote created")
     (listen-to-service-worker! service-worker-port push-notification-handler)
     (mock-net/mock-http-server
       {:parser (fn [EQL]

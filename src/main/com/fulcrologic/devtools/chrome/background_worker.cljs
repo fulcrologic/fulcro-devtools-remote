@@ -2,31 +2,27 @@
   "A middleman facilitating communication between the content script
    injected into the page with your target app(s)
    and your Chrome dev tool panel."
-  (:require [cljs.core.async :as async :refer [<! >! chan go go-loop put!]]
-            [com.fulcrologic.devtools.constants :as constants]
+  (:require [com.fulcrologic.devtools.constants :as constants]
             [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]))
 
-(defonce content-script-connections (atom {}))
-(defonce devtool-pane-connections (atom {}))
+(defonce tab-id->content-script-connection (atom {}))
+(defonce tab-id->devtool-connection (atom {}))
+
+(defn broadcast [msg] (js/chrome.tabs.sendMessage msg))
 
 (defn handle-devtool-message
   "Handle a message from the DevTools pane"
-  [devtool-port message _port]
-  (cond
-    (= "init" (isoget message "name"))
-    (let [tab-id (isoget message "tab-id")]
-      (js/console.log "Devtool connected to background script with tab id" tab-id)
-      (swap! devtool-pane-connections assoc tab-id devtool-port))
-
-    (isoget message "fulcro-inspect-devtool-message")
-    (let [tab-id      (isoget message "tab-id")
-          remote-port (get @content-script-connections tab-id)]
-      (when-not remote-port
-        (println "WARN: No stored remote port for this sender tab"
-          tab-id
-          "Known tabs:" (keys @content-script-connections))) ; FIXME rm
-      (some-> remote-port (.postMessage message))))
-  (js/Promise.resolve))
+  [^js devtool-port message]
+  (if-let [tab-id (isoget message "tab-id")]
+    (do
+      (js/console.log "Devtool message received by background script:" message)
+      (swap! tab-id->devtool-connection assoc tab-id devtool-port)
+      (if-let [^js target-port (get @tab-id->content-script-connection tab-id)]
+        (do
+          (js/console.log "Forwarding message to content script")
+          (.postMessage target-port message))
+        (js/console.error "No port to forward incoming message from devtool for tab" tab-id)))
+    (js/console.error "Message received with NO TAB ID from dev tool!")))
 
 (defn set-icon-and-popup [tab-id]
   (js/chrome.action.setIcon
@@ -40,71 +36,44 @@
     #js {:tabId tab-id
          :popup "popups/enabled.html"}))
 
-(defn handle-remote-message
+(defn handle-content-script-message
   "Handle a message from the content script"
-  [ch message port]
-  (js/console.log "Backgroud worker received message" message)
-  (cond
-    ; Forward message to devtool
-    (isoget message "fulcro-inspect-remote-message")
-    (let [tab-id (isoget-in port ["sender" "tab" "id"])]
-      (put! ch {:tab-id tab-id :message message})
-
-      ; ack message received
-      (when-let [id (isoget message "__fulcro-insect-msg-id")]
-        (.postMessage port #js {:ack "ok" "__fulcro-insect-msg-id" id})))
-
-    ; set icon and popup
-    (isoget message "fulcro-inspect-fulcro-detected")
-    (let [tab-id (isoget-in port ["sender" "tab" "id"])]
-      (set-icon-and-popup tab-id)))
-  (js/Promise.resolve))
+  [tab-id message]
+  (js/console.log "Content script sending message" message "targeted to" tab-id "devtool")
+  (if-let [^js target-port (get @tab-id->devtool-connection tab-id)]
+    (.postMessage target-port message)
+    (js/console.error "Unable to find dev tool for tab" tab-id)))
 
 (defn add-listener []
-  #_(js/chrome.runtime.onMessage.addListener (fn [msg _sender _respond]
-                                               (js/console.log "Content script message" msg)
-                                               ;; respect api contract, call the callback
-                                               (js/Promise.resolve)))
   (js/chrome.runtime.onConnect.addListener
     (fn [^js port]
-      (js/console.log "Connected!" (.-name port))
+      (js/console.log "Service worker detected connection" port)
       (condp = (isoget port "name")
         constants/content-script-port-name
-        (let [background->devtool-chan (chan (async/sliding-buffer 50000))
-              listener                 (partial handle-remote-message background->devtool-chan)
-              tab-id                   (isoget-in port ["sender" "tab" "id"])]
-          (swap! content-script-connections assoc tab-id port)
+        (do
+          (let [tab-id   (isoget-in port ["sender" "tab" "id"])
+                listener (partial handle-content-script-message tab-id)]
+            (js/console.log "Connection from content script for tab id" tab-id)
+            (set-icon-and-popup tab-id)
+            (swap! tab-id->content-script-connection assoc tab-id port)
 
-          (println "DEBUG onConn listener msg="
-            (isoget port "name")
-            "for tab-id" tab-id "storing the port...")      ; FIXME rm
-
-
-          (.addListener (isoget port "onMessage") listener)
-          (.addListener (isoget port "onDisconnect")
-            (fn [port]
-              (.removeListener (isoget port "onMessage") listener)
-              (swap! content-script-connections dissoc tab-id)))
-
-          (go-loop []
-            (when-let [{:keys [tab-id message] :as data} (<! background->devtool-chan)]
-              ; send message to devtool
-              (if (contains? @devtool-pane-connections tab-id)
-                (do
-                  (.postMessage (get @devtool-pane-connections tab-id) message)
-                  (recur))
-                (recur)))))
+            (.addListener (.-onMessage port) listener)
+            (.addListener (.-onDisconnect port)
+              (fn [^js port]
+                (.removeListener (.-onMessage port) listener)
+                (swap! tab-id->content-script-connection dissoc tab-id)))))
 
         constants/devtool-port-name
         (let [listener (partial handle-devtool-message port)]
-          (.addListener (isoget port "onMessage") listener)
-          (.addListener (isoget port "onDisconnect")
-            (fn [port]
-              (.removeListener (isoget port "onMessage") listener)
-              (when-let [port-key (->> @devtool-pane-connections
+          (js/console.log "Devtool connected")
+          (.addListener (.-onMessage port) listener)
+          (.addListener (.-onDisconnect port)
+            (fn [^js port]
+              (.removeListener (.-onMessage port) listener)
+              (when-let [port-key (->> @tab-id->devtool-connection
                                     (keep (fn [[k v]] (when (= v port) k)))
                                     (first))]
-                (swap! devtool-pane-connections dissoc port-key)))))
+                (swap! tab-id->devtool-connection dissoc port-key)))))
 
         (js/console.log "Ignoring connection" (isoget port "name"))))))
 

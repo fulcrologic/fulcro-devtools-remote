@@ -20,11 +20,19 @@
       :cljs (or (gobj/get obj (some-> k (name))) default))))
 
 (defn isoget-in
-  "Like get-in, but for js objects, and in CLJC. In clj, it is just `get-in`. In cljs it is
-  `gobj/getValueByKeys`."
-  ([obj ks] (isoget obj ks nil))
-  ([obj ks default]
-   #?(:clj  (get-in obj ks default)
-      :cljs (or (apply gobj/getValueByKeys obj ks) default))))
+  "Like get-in, but for js objects, and in CLJC. In clj, it is just get-in. In cljs it is
+  gobj/getValueByKeys."
+  ([obj kvs]
+   (isoget-in obj kvs nil))
+  ([obj kvs default]
+   #?(:clj (get-in obj kvs default)
+      :cljs
+      (let [ks (mapv (fn [k] (some-> k name)) kvs)]
+        (or (apply gobj/getValueByKeys obj ks) default)))))
 
+(comment
+
+
+  (isoget-in #js {"a" #js {"b" 1}} ["a" "b"])
+  )
 

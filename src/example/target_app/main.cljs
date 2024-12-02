@@ -14,8 +14,8 @@
     [com.wsscode.pathom.core :as p]))
 
 (declare my-tool-id tooling-processor parser)
-(defonce app (with-react18
-               (app/fulcro-app)))
+(defonce app1 (with-react18 (app/fulcro-app)))
+(defonce app2 (with-react18 (app/fulcro-app)))
 
 (defsc Counter [this {:counter/keys [n]}]
   {:ident         :counter/id
@@ -38,8 +38,8 @@
     (let [next-id (inc (reduce max 0 (mapv :counter/id (vals (:counter/id @state)))))]
       (dt/ido
         ;; Tell the dev tool that I added a counter
-        (t/push! my-tool-id {:action     `add-counter
-                             :counter/id next-id}))
+        (t/push! @my-tool-id {:action     `add-counter
+                              :counter/id next-id}))
       (swap! state add-counter* next-id))))
 
 (defsc Root [this {:ui/keys [counters]}]
@@ -53,15 +53,15 @@
 
 (dt/ido
   ;; Allow the devtool to restart the application via a mutation
-  (pc/defmutation restart [env input]
-    {}
+  (pc/defmutation restart [{:keys [app]} input]
+    {::pc/sym 'common.tooling/restart}
     (let [initial-state (comp/get-initial-state Root {})
           state-atom    (::app/state-atom app)
           pristine-db   (fnorm/tree->db Root initial-state true)]
       (reset! state-atom pristine-db)
       (app/force-root-render! app)))
 
-  (pc/defresolver counter-details-resolver [env input]
+  (pc/defresolver counter-details-resolver [{:keys [app]} input]
     {::pc/output [{:target/counters [:counter/id :counter/n]}]}
     (let [state-map (app/current-state app)
           counters  (vals (:counter/id state-map))]
@@ -73,13 +73,18 @@
                                                             pc/open-ident-reader]}
                                    ::p/mutate  pc/mutate-async
                                    ::p/plugins [(pc/connect-plugin {::pc/register [restart counter-details-resolver]})]}))
-  (defn tooling-processor [EQL] (parser {} EQL)))
+  (defn tooling-processor [app EQL] (parser {:app app} EQL)))
 
-(defn refresh [] (app/mount! app Root "app"))
+(defn refresh []
+  (app/mount! app1 Root "app1")
+  (app/mount! app2 Root "app2"))
 
 (defn start []
-  (app/mount! app Root "app")
-  (dt/ido
-    (vreset! my-tool-id (t/target-started! {} tooling-processor))))
+  (app/mount! app1 Root "app1")
+  (app/mount! app2 Root "app2")
+  (dt/ilet [{app1-rta ::app/runtime-atom} app1
+            {app2-rta ::app/runtime-atom} app2]
+    (swap! app1-rta assoc ::id (t/target-started! {} (partial tooling-processor app1)))
+    (swap! app2-rta assoc ::id (t/target-started! {} (partial tooling-processor app2)))))
 
 (start)

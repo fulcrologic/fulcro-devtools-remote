@@ -26,7 +26,7 @@
 
 (def devtool-port-name
   "The name used for the port that can communicate between the devtool and the background script"
-  "fulcrologic-content-script-port")
+  "fulcrologic-devtool-port")
 
 (def devtool->background-script-key
   "JS Event object key that is used when sending events to the window for the content script."

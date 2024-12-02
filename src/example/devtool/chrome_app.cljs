@@ -12,6 +12,7 @@
   (log/info "Target application sent an out-of-band-message" msg))
 
 (defn start! []
+  (log/info "Starting devtool")
   (let [app  (with-react18
                (app/fulcro-app
                  {:remotes {:remote (dt/devtool-remote target-message-received)}}))
@@ -20,4 +21,4 @@
     (app/mount! app ui/Root node)
     app))
 
-(start!)
+(defonce started (start!))
