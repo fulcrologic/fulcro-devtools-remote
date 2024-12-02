@@ -18,7 +18,7 @@
 
 (def content-script->target-key
   "JS Event object key that is used when sending events from the content script back to the target."
-  "fulcrologic-target-from-content-script")
+  "fulcrologic-content-script-to-target")
 
 (def content-script-port-name
   "The name used for the port that can communicate between the content script and the background script"

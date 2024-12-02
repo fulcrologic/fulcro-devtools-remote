@@ -11,6 +11,7 @@
     [com.fulcrologic.fulcro.inspect.transit :as encode]
     [taoensso.timbre :as log]))
 
+
 (declare push!)
 
 (defonce started?* (atom false))                            ; make sure we only start once
@@ -20,7 +21,7 @@
 (defn- handle-devtool-message [message]
   (let [target-id  (mk/target-id message)
         EQL        (mk/eql message)
-        processor  (get @target-processors target-id)
+        processor  (get-in @target-processors [target-id :parser])
         request-id (mk/request-id message)]
     (log/info "Target trying to process message from background script:" message)
     #?(:cljs
@@ -35,7 +36,7 @@
                (push! target-id {mk/request-id request-id
                                  mk/error      (ex-message e)})
                (log/error e "Devtool client side processor failed."))))
-         (log/error {:msg              "Malformed request"
+         (log/error {:msg              "Failed to process devtool message"
                      :event            message
                      :target-id        target-id
                      :EQL              EQL
@@ -43,11 +44,13 @@
 
 (defn- event-data
   "Decode a js event"
-  [event] (some-> event (isoget constants/content-script->target-key) encode/read))
+  [^js event]
+  (js/console.log "Decoding" event)
+  (some-> (.-data event) (isoget constants/content-script->target-key) encode/read))
 
 (defn- devtool-message? [^js event]
   (and (identical? (.-source event) js/window)
-    (isoget event constants/content-script->target-key)))
+    (isoget (.-data event) constants/content-script->target-key)))
 
 (defn- listen-for-content-script-messages!
   "Add an event listener for incoming messages that will decode them, run them though the async parser, and then
@@ -58,7 +61,14 @@
        (fn [^js event]
          (js/console.log "Target helper code saw event" event)
          (when (isoget (.-data event) "describe-targets")
-           (.postMessage js/window (clj->js {"devtool-targets" (encode/write (keys @target-processors))}) "*"))
+           (.postMessage js/window
+             (clj->js {constants/target->content-script-key
+                       (encode/write {mk/active-targets
+                                      (into {}
+                                        (map (fn [k]
+                                               [k (get-in @target-processors [k :label] (str "Target:" k))]))
+                                        (keys @target-processors))})})
+             "*"))
          (when (devtool-message? event)
            (handle-devtool-message (event-data event))))
        false)))
@@ -108,5 +118,6 @@
   (when (and (or DEBUG INSPECT) (not= "disabled" INSPECT))
     (let [target-id (random-uuid)]
       (log/debug "Target activated by application on web page" target-id target-description)
-      (vswap! target-processors assoc target-id async-pathom-processor)
+      (vswap! target-processors assoc target-id {:label  target-description
+                                                 :parser async-pathom-processor})
       target-id)))

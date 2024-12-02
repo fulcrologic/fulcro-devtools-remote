@@ -38,3 +38,7 @@
   "This key stores the actual EQL request."
   ::eql)
 
+(def active-targets
+  "This key stores all target applications that the devtool is connected to."
+  ::active-targets)
+

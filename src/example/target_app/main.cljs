@@ -13,9 +13,14 @@
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]))
 
-(declare my-tool-id tooling-processor parser)
+(declare tooling-processor parser)
 (defonce app1 (with-react18 (app/fulcro-app)))
 (defonce app2 (with-react18 (app/fulcro-app)))
+
+(defn devtool-target-id
+  "In your target application, you have to keep track of the ID you were assigned on target-started, and send that
+   to the server for push. If your target app isn't Fulcro, invent this storage for yourself."
+  [app] (some-> app ::app/runtime-atom deref ::id))
 
 (defsc Counter [this {:counter/keys [n]}]
   {:ident         :counter/id
@@ -34,12 +39,12 @@
       :append [:ui/counters])))
 
 (defmutation add-counter [_]
-  (action [{:keys [state]}]
+  (action [{:keys [app state]}]
     (let [next-id (inc (reduce max 0 (mapv :counter/id (vals (:counter/id @state)))))]
       (dt/ido
         ;; Tell the dev tool that I added a counter
-        (t/push! @my-tool-id {:action     `add-counter
-                              :counter/id next-id}))
+        (t/push! (devtool-target-id app) {:action     `add-counter
+                                          :counter/id next-id}))
       (swap! state add-counter* next-id))))
 
 (defsc Root [this {:ui/keys [counters]}]
@@ -67,7 +72,6 @@
           counters  (vals (:counter/id state-map))]
       {:target/counters (sort-by :counter/id counters)}))
 
-  (defonce my-tool-id (volatile! nil))
   (defonce parser (p/async-parser {::p/env     {::p/reader [p/map-reader
                                                             pc/async-reader2
                                                             pc/open-ident-reader]}
@@ -84,7 +88,7 @@
   (app/mount! app2 Root "app2")
   (dt/ilet [{app1-rta ::app/runtime-atom} app1
             {app2-rta ::app/runtime-atom} app2]
-    (swap! app1-rta assoc ::id (t/target-started! {} (partial tooling-processor app1)))
-    (swap! app2-rta assoc ::id (t/target-started! {} (partial tooling-processor app2)))))
+    (swap! app1-rta assoc ::id (t/target-started! "App 1" (partial tooling-processor app1)))
+    (swap! app2-rta assoc ::id (t/target-started! "App 2" (partial tooling-processor app2)))))
 
 (start)

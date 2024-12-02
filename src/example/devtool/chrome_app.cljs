@@ -8,17 +8,18 @@
     [devtool.ui :as ui]
     [taoensso.timbre :as log]))
 
-(defn target-message-received [msg]
-  (log/info "Target application sent an out-of-band-message" msg))
-
 (defn start! []
   (log/info "Starting devtool")
-  (let [app  (with-react18
+  (let [aa   (atom nil)
+        app  (with-react18
                (app/fulcro-app
-                 {:remotes {:remote (dt/devtool-remote target-message-received)}}))
+                 {:remotes {:remote (dt/devtool-remote (fn [msg] (ui/target-message-received @aa msg)))}}))
+        _    (reset! aa app)
         node (js/document.createElement "div")]
     (js/document.body.appendChild node)
     (app/mount! app ui/Root node)
-    app))
+    (add-watch dt/active-target-descriptors :at (fn [_ _ _ new] (app/force-root-render! app)))
+    app)
+  )
 
 (defonce started (start!))

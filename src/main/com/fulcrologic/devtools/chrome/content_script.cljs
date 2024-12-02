@@ -4,10 +4,7 @@
   (:require
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.transit :as encode]
-    [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]
-    [taoensso.timbre :as log]))
-
-(defonce active-targets (volatile! #{}))
+    [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]))
 
 (defn send-to-target! [msg] (.postMessage js/window msg "*"))
 (defn send-to-background! [^js port msg] (.postMessage port msg))
@@ -18,20 +15,16 @@
   [^js background-script-port]
   (.addListener (.-onMessage background-script-port)
     (fn [^js msg]
-      (js/console.log "Content script received background script" msg)
-      (send-to-target! (clj->js {constants/content-script->target-key msg})))))
+      (js/console.log "Content script received message from service worker" (isoget msg "data"))
+      (send-to-target! (clj->js {constants/content-script->target-key (isoget msg "data")})))))
 
 (defn listen-to-target! [^js service-worker-port]
   (.addEventListener js/window "message"
     (fn [^js event]
       (js/console.log "Content script saw window event" event)
-      (if-let [json-targets (isoget (.-data event) "devtool-targets")]
-        (let [targets (encode/read json-targets)]
-          (js/console.log targets)
-          (vreset! active-targets (set targets)))
-        (when-let [msg (isoget (.-data event) constants/target->content-script-key)]
-          (js/console.log "Content script forwarded message to service worker" msg)
-          (send-to-background! service-worker-port msg)))))
+      (when-let [msg (isoget (.-data event) constants/target->content-script-key)]
+        (js/console.log "Content script forwarded message to service worker" msg)
+        (send-to-background! service-worker-port msg))))
   (send-to-target! #js {"describe-targets" true}))
 
 (defn start! []
