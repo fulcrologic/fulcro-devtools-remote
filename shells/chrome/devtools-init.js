@@ -1,6 +1,6 @@
-chrome.devtools.panels.create("Fulcro Inspect",
+chrome.devtools.panels.create("Sample Devtool",
   "",
-  "inspect-panel.html",
+  "panel.html",
   function (panel) {
-    console.log("panel initialized", panel);
+    console.log("Sample panel initialized", panel);
   });

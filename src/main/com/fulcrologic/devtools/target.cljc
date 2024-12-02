@@ -14,7 +14,8 @@
 
   If your tool TARGET is CLJ, then use Java properties
   \"com.fulcrologic.devtools.target.DEBUG\" and \"com.fulcrologic.devtools.target.INSPECT\" for the same effects.
-  ")
+  "
+  #?(:cljs (:require-macros com.fulcrologic.devtools.target)))
 
 (defonce registered-target-processors (atom {}))
 
@@ -32,6 +33,11 @@
         (try
           ~@body
           (catch :default ~'e)))))
+
+(defn cljs?
+  "Returns true when env is a cljs macro &env"
+  [env]
+  (boolean (:ns env)))
 
 #?(:clj
    (defmacro ilet

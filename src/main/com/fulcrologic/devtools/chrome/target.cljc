@@ -83,15 +83,22 @@
          (listen-for-content-script-messages!)))))
 
 (defn target-started!
-  "Register the target with the Devtools communications, if available. See `target` ns docstring for
+  "Register your target with the Devtools communications, if available. See `target` ns docstring for
    instructions on enabling/disabling tooling.
 
-   The `target-id` should be a UUID for the target, and `target-description` is a map of
+   Returns a UUID, which is now the caller's target-id, and must be used when doing out-of-band calls
+   to `push!`.  Requests (loads/mutations) from the devtool that are directed to that target-id will
+   be processed by the provided `async-pathom-processor`.
+
+   `target-description` is a map of
    transit-serializable data that will be sent to the tool to indicate information about the target.
    Communications will always include the target-id so that if you have multiple targets on page we can
    route the messages accordingly."
-  [target-id target-description async-pathom-processor]
+  [target-description async-pathom-processor]
   (when (and (or DEBUG INSPECT) (not= "disabled" INSPECT))
-    (log/debug "Devtool registered target" target-id)
-    (swap! target-processors assoc target-id async-pathom-processor)
-    (push! target-id {mk/response target-description})))
+    (let [target-id (random-uuid)]
+      (log/debug "Devtool registered target" target-id)
+      (swap! target-processors assoc target-id async-pathom-processor)
+      (push! target-id {mk/target-id target-id
+                        mk/response target-description})
+      target-id)))

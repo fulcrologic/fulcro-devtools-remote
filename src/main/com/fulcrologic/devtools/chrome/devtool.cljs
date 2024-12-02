@@ -4,6 +4,7 @@
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.devtools.transit :as encode]
+    [com.fulcrologic.devtools.utils :refer [isoget]]
     [com.fulcrologic.fulcro.application]
     [com.fulcrologic.fulcro.components]
     [com.fulcrologic.fulcro.networking.mock-server-remote :as mock-net]
@@ -43,11 +44,11 @@
   port)
 
 (defn- send-to-target! [port target-id request-id EQL]
-  (.postMessage port #js {constants/devtool->background-script-key (encode/write
-                                                                     {mk/request-id request-id
-                                                                      mk/target-id  target-id
-                                                                      mk/eql        EQL
-                                                                      mk/tab-id     current-tab-id})}))
+  (.postMessage port (clj->js {constants/devtool->background-script-key (encode/write
+                                                                          {mk/request-id request-id
+                                                                           mk/target-id  target-id
+                                                                           mk/eql        EQL
+                                                                           mk/tab-id     current-tab-id})})))
 
 (defn devtool-remote
   "A Fulcro remote that will send/receive traffic with the background service worker.

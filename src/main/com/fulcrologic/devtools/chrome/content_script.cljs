@@ -14,7 +14,7 @@
   [^js background-script-port]
   (.addListener (isoget background-script-port "onMessage")
     (fn [msg]
-      (send-to-target! #js {constants/content-script->target-key msg}))))
+      (send-to-target! (clj->js {constants/content-script->target-key msg})))))
 
 (defn listen-to-target! [^js service-worker-port]
   (.addEventListener js/window "message"
