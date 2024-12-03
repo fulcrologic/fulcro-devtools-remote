@@ -9,7 +9,7 @@
 
 (defonce tab-id->content-script-connection (atom {}))
 (defonce tab-id->devtool-connection (atom {}))
-(defonce targets (atom {}))
+(defonce tab-id->targets (atom {}))
 
 (defn broadcast [msg] (js/chrome.tabs.sendMessage msg))
 
@@ -24,7 +24,7 @@
         (do
           (js/console.log "Forwarding message to content script")
           (.postMessage target-port message))
-        (js/console.error "No port to forward incoming message from devtool for tab" tab-id)))
+        (js/console.warn "No port to forward incoming message from devtool for tab" tab-id)))
     (js/console.error "Message received with NO TAB ID from dev tool!")))
 
 (defn set-icon-and-popup [tab-id]
@@ -48,11 +48,11 @@
       (let [target-descriptors (mk/active-targets decoded-msg)]
         (when target-descriptors
           (js/console.log "Service worker tracking targets" target-descriptors)
-          (reset! targets target-descriptors)))
+          (swap! tab-id->targets assoc tab-id target-descriptors)))
 
       (if target-port
         (.postMessage target-port (encode/write
-                                    (assoc decoded-msg mk/active-targets @targets)))
+                                    (assoc decoded-msg mk/active-targets (get @tab-id->targets tab-id))))
         (js/console.error "Unable to find dev tool for tab" tab-id)))))
 
 (defn add-listener []
@@ -72,6 +72,7 @@
             (.addListener (.-onDisconnect port)
               (fn [^js port]
                 (.removeListener (.-onMessage port) listener)
+                (swap! tab-id->targets dissoc tab-id)
                 (swap! tab-id->content-script-connection dissoc tab-id)))))
 
         constants/devtool-port-name

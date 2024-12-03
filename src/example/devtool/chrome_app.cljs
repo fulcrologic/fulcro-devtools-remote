@@ -17,9 +17,8 @@
         _    (reset! aa app)
         node (js/document.createElement "div")]
     (js/document.body.appendChild node)
+    (dt/watch-targets! app)
     (app/mount! app ui/Root node)
-    (add-watch dt/active-target-descriptors :at (fn [_ _ _ new] (app/force-root-render! app)))
-    app)
-  )
+    app))
 
 (defonce started (start!))

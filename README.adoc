@@ -24,7 +24,9 @@ IF The target of your tool is a Fulcro application (as it is for Fulcro Inspect)
 
 [d2]
 -----
-Target (Fulcro) <-> Dev Tool (Fulcro)
+Target 1 (Fulcro) <-> Dev Tool (Fulcro)
+Target 2 (Fulcro) <-> Dev Tool (Fulcro)
+Target 3 (Fulcro) <-> Dev Tool (Fulcro)
 -----
 
 === Chrome
@@ -42,9 +44,16 @@ So, in reality, the comms look more like this:
 
 [d2]
 -----
-Chrome Extension <-> Background Worker: port
-Background Worker <-> Content Script: port
-Content Script <-> Target CLJS: events
+Chrome Extension 1 <-> Background Worker: port
+Chrome Extension 2 <-> Background Worker: port
+Chrome Extension 3 <-> Background Worker: port
+Background Worker <-> Content Script 1: port
+Background Worker <-> Content Script 2: port
+Background Worker <-> Content Script 3: port
+Content Script 1 <-> Target CLJS 1: events
+Content Script 1 <-> Target CLJS 2: events
+Content Script 2 <-> Target CLJS 3: events
+Content Script 3 <-> Target CLJS 4: events
 -----
 
 === Electron

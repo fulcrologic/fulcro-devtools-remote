@@ -30,6 +30,7 @@
                                   :output-dir       "shells/chrome/js/devtool"
                                   :asset-path       "js/devtool"
                                   :compiler-options {}
+                                  :devtools         {:preloads [com.fulcrologic.devtools.chrome.devtool-inspect]}
                                   :modules          {:main {:entries [devtool.chrome-app]}}}
 
           :electron-main         {:target           :node-script

@@ -7,10 +7,9 @@
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.devtools.target :refer [DEBUG INSPECT]]
-    [com.fulcrologic.devtools.utils :as utils :refer [isoget]]
+    [com.fulcrologic.devtools.utils :as utils :refer [isoget isoget-in]]
     [com.fulcrologic.fulcro.inspect.transit :as encode]
     [taoensso.timbre :as log]))
-
 
 (declare push!)
 
@@ -23,9 +22,9 @@
         EQL        (mk/eql message)
         processor  (get-in @target-processors [target-id :parser])
         request-id (mk/request-id message)]
-    (log/info "Target trying to process message from background script:" message)
+    (log/info "Target trying to process message from background script:" target-id EQL request-id (boolean processor))
     #?(:cljs
-       (if (and EQL processor request-id)
+       (if (and EQL processor request-id target-id)
          (async/go
            (try
              (log/info "Using async processor for" target-id)
@@ -46,7 +45,8 @@
   "Decode a js event"
   [^js event]
   (js/console.log "Decoding" event)
-  (some-> (.-data event) (isoget constants/content-script->target-key) encode/read))
+  (let [message (some-> event (isoget-in ["data" constants/content-script->target-key "data"]) encode/read)]
+    message))
 
 (defn- devtool-message? [^js event]
   (and (identical? (.-source event) js/window)

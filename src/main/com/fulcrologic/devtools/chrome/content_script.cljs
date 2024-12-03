@@ -15,8 +15,8 @@
   [^js background-script-port]
   (.addListener (.-onMessage background-script-port)
     (fn [^js msg]
-      (js/console.log "Content script received message from service worker" (isoget msg "data"))
-      (send-to-target! (clj->js {constants/content-script->target-key (isoget msg "data")})))))
+      (js/console.log "Content script received message from service worker" msg)
+      (send-to-target! (clj->js {constants/content-script->target-key msg})))))
 
 (defn listen-to-target! [^js service-worker-port]
   (.addEventListener js/window "message"

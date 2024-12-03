@@ -5,7 +5,8 @@
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.devtools.transit :as encode]
     [com.fulcrologic.fulcro.application]
-    [com.fulcrologic.fulcro.components]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro.mutations :refer [defmutation]]
     [com.fulcrologic.fulcro.networking.mock-server-remote :as mock-net]
     [edn-query-language.core :as eql]
     [taoensso.timbre :as log]))
@@ -15,11 +16,26 @@
   js/chrome.devtools.inspectedWindow.tabId)
 
 (defonce
-  ^{:docstring "A map from request ID to async channel where the response is expected."}
+  ^{:doc "A map from request ID to async channel where the response is expected."}
   active-requests
   (volatile! {}))
 
-(defonce active-target-descriptors (atom []))
+(defonce ^{:doc "An atom containing a map from target ID to target label. Use `watch-targets!` to make this data appear
+  in your Fulcro devtool at :devtool/active-targets."}
+  active-target-descriptors (atom []))
+
+(defmutation update-active-targets [ts]
+  (action [{:keys [state]}]
+    (swap! state assoc :devtool/active-targets ts)))
+
+(defn watch-targets!
+  "Installs (or replaces) a watch on the active targets such that a mutation is run on `app` to transact :devtool/active-targets into
+   the app state at :devtool/active-targets."
+  [app]
+  (remove-watch active-target-descriptors ::active-targets)
+  (add-watch active-target-descriptors ::active-targets
+    (fn [_ _ _ new]
+      (comp/transact! app [(update-active-targets new)]))))
 
 (defn- listen-to-service-worker! [^js port push-handler]
   (.addListener (.-onMessage port)
