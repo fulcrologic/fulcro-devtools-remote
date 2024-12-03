@@ -98,7 +98,5 @@
                      (let [timer (async/timeout 10000)
                            [result c] (async/alts! [response-channel timer] :priority true)]
                        (if (= c response-channel)
-                         {:status-code 200
-                          :body        result}
-                         {:status-code 500
-                          :body        {}})))))})))
+                         (mk/response result)
+                         {mk/error "Timed out"})))))})))

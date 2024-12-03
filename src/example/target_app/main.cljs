@@ -66,17 +66,20 @@
       (reset! state-atom pristine-db)
       (app/force-root-render! app)))
 
-  (pc/defresolver counter-details-resolver [{:keys [app]} input]
-    {::pc/output [{:target/counters [:counter/id :counter/n]}]}
+  (pc/defresolver counter-stats-resolver [{:keys [app]} input]
+    {::pc/output [{:counter/stats [:stats/number-of-counters
+                                   :stats/sum-of-counters]}]}
     (let [state-map (app/current-state app)
           counters  (vals (:counter/id state-map))]
-      {:target/counters (sort-by :counter/id counters)}))
+      {:counter/stats
+       {:stats/number-of-counters (count counters)
+        :stats/sum-of-counters (reduce + 0 (map :counter/n counters))}}))
 
   (defonce parser (p/async-parser {::p/env     {::p/reader [p/map-reader
                                                             pc/async-reader2
                                                             pc/open-ident-reader]}
                                    ::p/mutate  pc/mutate-async
-                                   ::p/plugins [(pc/connect-plugin {::pc/register [restart counter-details-resolver]})]}))
+                                   ::p/plugins [(pc/connect-plugin {::pc/register [restart counter-stats-resolver]})]}))
   (defn tooling-processor [app EQL] (parser {:app app} EQL)))
 
 (defn refresh []

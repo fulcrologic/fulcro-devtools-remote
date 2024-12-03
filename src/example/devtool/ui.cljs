@@ -1,12 +1,11 @@
 (ns devtool.ui
   (:require
-    [cljs.pprint :refer [pprint]]
     [clojure.edn :as edn]
     [com.fulcrologic.devtools.chrome.devtool :refer [active-target-descriptors]]
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
-    [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom]
     [com.fulcrologic.fulcro.dom.events :as evt]
     [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
@@ -27,26 +26,38 @@
       ;; Mutation (use declare-mutation from the app side)
       tx (comp/transact! app tx {:ref [:tool/id target-id]}))))
 
-(defsc Tool [this {:tool/keys [id label]
-                   :ui/keys   [counter-sum counters]}]
+(defsc CounterStats [this {:stats/keys [number-of-counters
+                                        sum-of-counters]}]
+  {:query [:stats/number-of-counters
+           :stats/sum-of-counters]}
+  (dom/div
+    (dom/div
+      "Counters: " number-of-counters)
+    (dom/div
+      "Sum: " sum-of-counters)))
+
+(def ui-counter-stats (comp/factory CounterStats))
+
+(defsc Tool [this {:tool/keys [id label counter-stats]}]
   {:query         [:tool/id
                    :tool/label
-                   :ui/counter-sum
-                   :ui/counters]
+                   {:tool/counter-stats (comp/get-query CounterStats)}]
    :ident         :tool/id
-   :initial-state {:tool/id        :param/id
-                   :tool/label     :param/label
-                   :ui/counter-sum 0
-                   :ui/counters    0}}
+   :initial-state {:tool/id            :param/id
+                   :tool/label         :param/label
+                   :tool/counter-stats {}}}
   (dom/div
     (dom/h3 (str label))
     (dom/button
       {:onClick (fn [] (comp/transact! this [(tooling/restart {mk/target-id id})]))}
       "RESET")
-    (dom/div
-      (str "Counters: " counters))
-    (dom/div
-      (str "Counter Sum: " counter-sum))))
+    (dom/button {:onClick (fn []
+                            (df/load! this :counter/stats CounterStats
+                              {:params {mk/target-id id}
+                               :target [:tool/id id :tool/counter-stats]}))}
+      "Load counter stats")
+    (when counter-stats
+      (ui-counter-stats counter-stats))))
 
 (def ui-tool (comp/factory Tool {:keyfn :tool/id}))
 
@@ -58,7 +69,7 @@
         (swap! state merge/merge-component Tool tool :replace [:ui/active-tool])))))
 
 (defsc Root [this {:devtool/keys [active-targets]
-                   :ui/keys [active-tool] :as props}]
+                   :ui/keys      [active-tool] :as props}]
   {:query         [:devtool/active-targets
                    {:ui/active-tool (comp/get-query Tool)}]
    :initial-state {}}
