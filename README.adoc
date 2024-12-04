@@ -9,7 +9,7 @@
 
 == Devtools Remote
 
-INCOMPLETE. WORK IN PROGRESS. Do not use.
+Alpha quality. Some internals subject to change.
 
 Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
 
@@ -24,10 +24,12 @@ IF The target of your tool is a Fulcro application (as it is for Fulcro Inspect)
 
 [d2]
 -----
-Target 1 (Fulcro) <-> Dev Tool (Fulcro)
-Target 2 (Fulcro) <-> Dev Tool (Fulcro)
-Target 3 (Fulcro) <-> Dev Tool (Fulcro)
+Target 1 (Fulcro) <-> Dev Tool (Fulcro): EQL
+Target 2 (Fulcro) <-> Dev Tool (Fulcro): EQL
+Target 3 (Fulcro) <-> Dev Tool (Fulcro): EQL
 -----
+
+but the goal of this library is to let your target by anything that you can talk over the protocol.
 
 === Chrome
 
@@ -35,7 +37,7 @@ The goal is that your mental model is this:
 
 [d2]
 -----
-Fulcro UI (Chrome Extension) <-> CLJS running in Web Page: Fulcro remote
+Fulcro UI (Chrome Extension) <-> CLJS running in Web Page: Fulcro remote: EQL
 -----
 
 even though a Chrome extensions require transferring the message through multiple hops for security. The devtool has to run a background worker, which can communicate to/from either the extension or the page, but this communication is done via ports and on-page events of the target web page.
@@ -44,16 +46,16 @@ So, in reality, the comms look more like this:
 
 [d2]
 -----
-Chrome Extension 1 <-> Background Worker: port
-Chrome Extension 2 <-> Background Worker: port
-Chrome Extension 3 <-> Background Worker: port
-Background Worker <-> Content Script 1: port
-Background Worker <-> Content Script 2: port
-Background Worker <-> Content Script 3: port
-Content Script 1 <-> Target CLJS 1: events
-Content Script 1 <-> Target CLJS 2: events
-Content Script 2 <-> Target CLJS 3: events
-Content Script 3 <-> Target CLJS 4: events
+Chrome Extension 1 <-> Background Worker: port (transit string)
+Chrome Extension 2 <-> Background Worker: port (transit string)
+Chrome Extension 3 <-> Background Worker: port (transit string)
+Background Worker <-> Content Script 1: port (transit string)
+Background Worker <-> Content Script 2: port (transit string)
+Background Worker <-> Content Script 3: port (transit string)
+Content Script 1 <-> Target CLJS 1: js event
+Content Script 1 <-> Target CLJS 2: js event
+Content Script 2 <-> Target CLJS 3: js event
+Content Script 3 <-> Target CLJS 4: js event
 -----
 
 === Electron

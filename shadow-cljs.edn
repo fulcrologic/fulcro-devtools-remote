@@ -5,7 +5,7 @@
  :builds {:demo                  {:target     :browser
                                   :output-dir "resources/public/js/demo"
                                   :asset-path "/js/demo"
-                                  :devtools   {:preloads           [com.fulcrologic.devtools.chrome.preload]
+                                  :devtools   {:preloads           [com.fulcrologic.devtools.chrome-preload]
                                                :after-load         target-app.main/refresh
                                                :http-root          "resources/public"
                                                :http-port          8080
@@ -30,20 +30,37 @@
                                   :output-dir       "shells/chrome/js/devtool"
                                   :asset-path       "js/devtool"
                                   :compiler-options {}
-                                  :devtools         {:preloads [com.fulcrologic.devtools.chrome.devtool-inspect]}
+                                  :devtools         {:preloads [com.fulcrologic.fulcro.inspect.websocket-preload]}
                                   :modules          {:main {:entries [devtool.chrome-app]}}}
 
           :electron-main         {:target           :node-script
-                                  :main             fulcro.inspect.electron.background.main/init
+                                  :main             com.fulcrologic.devtools.electron.background.main/init
                                   :devtools         {:devtools-url "http://localhost:9632"
-                                                     :after-load   fulcro.inspect.electron.background.main/done}
+                                                     :after-load   com.fulcrologic.devtools.electron.background.main/done}
                                   :compiler-options {:optimizations :simple}
                                   :output-to        "shells/electron/js/background/main.js"}
 
+          :test                  {:target           :browser-test
+                                  :test-dir         "resources/public/js/test"
+                                  :ns-regexp        "-test$"
+                                  :js-options       {:ignore-asset-requires true}
+                                  :compiler-options {:static-fns      false
+                                                     :external-config {:guardrails {:defn-macro             nil
+                                                                                    :throw?                 true
+                                                                                    :guardrails/mcps        20
+                                                                                    :guardrails/compact?    true
+                                                                                    :guardrails/stack-trace :none
+                                                                                    :guardrails/trace?      true
+                                                                                    :guardrails/use-stderr? false}}}
+                                  :devtools         {:http-port          8022
+                                                     :http-resource-root "public"
+                                                     :http-root          "resources/public/js/test"}}
+
+
           :electron-renderer     {:target           :browser
-                                  :modules          {:main {:entries [fulcro.inspect.electron.renderer.main]}}
+                                  :modules          {:main {:entries [com.fulcrologic.devtools.electron.renderer.main]}}
                                   :devtools         {:devtools-url "http://localhost:9632"
-                                                     :after-load   fulcro.inspect.electron.renderer.main/start}
+                                                     :after-load   com.fulcrologic.devtools.electron.renderer.main/start}
                                   :compiler-options {:optimizations :simple}
                                   :output-dir       "shells/electron/js/renderer"
                                   :asset-path       "js/renderer"}}}

@@ -11,7 +11,13 @@
     "react-dom": "^18.3.1",
     "create-react-class": "^15.7.0",
     "shadow-cljs": "^2.28.17",
-    "transit-js": "^0.8.874"
+    "transit-js": "^0.8.874",
+
+    "cors": "^2.8.5",
+    "electron-settings": "^4.0.4",
+    "express": "^4.21.1",
+    "express-ws": "^4.0.0",
+    "electron": "^32.2.5"
   },
   "repository": {
     "type": "git",

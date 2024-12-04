@@ -1,0 +1,8 @@
+{:defn-macro             nil
+ :throw?                 true
+ :async?                 false
+ :guardrails/mcps        50
+ :guardrails/compact?    true
+ :guardrails/stack-trace :none
+ :guardrails/trace?      true
+ :guardrails/use-stderr? true}

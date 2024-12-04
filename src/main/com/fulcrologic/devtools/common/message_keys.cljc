@@ -1,4 +1,4 @@
-(ns com.fulcrologic.devtools.message-keys
+(ns com.fulcrologic.devtools.common.message-keys
   "Predefined keys for messages that are used by the devtool support.")
 
 
@@ -6,9 +6,17 @@
   "The well-known message key for communicating which devtool tab you want to talk to from the bg script"
   ::tab-id)
 
+(def connected?
+  "A key that indicates the connection status changed (true == opened, false == dropped)"
+  ::connected?)
+
 (def target-id
   "The well-known message key for target ID"
   ::target-id)
+
+(def target-description
+  "The well-known message key for target description"
+  ::target-description)
 
 (def request-id
   "The well-known message key for the request ID, which is used for responses to explicit round-trip messages."
@@ -34,9 +42,9 @@
   "This message type indicates that a target started."
   ::target-started)
 
-(def eql
-  "This key stores the actual EQL request."
-  ::eql)
+(def request
+  "This key stores the actual request data."
+  ::request)
 
 (def active-targets
   "This key stores all target applications that the devtool is connected to."
