@@ -1,5 +1,7 @@
-(ns com.fulcrologic.devtools.chrome.devtool-inspect
+(ns com.fulcrologic.devtools.websocket-preload
   (:require [cljs.core.async :as async :refer [<! >!] :refer-macros [go go-loop]]
+            [com.fulcrologic.devtools.message-keys :as mk]
+            [com.fulcrologic.devtools.target :as target]
             [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
             [com.fulcrologic.fulcro.inspect.inspect-ws]
             [com.fulcrologic.fulcro.inspect.inspect-ws :as fiws]
@@ -54,3 +56,30 @@
 
 (defonce started (install-ws))
 
+(deftype WebsocketConnection [my-target-uuid active-requests]
+  target/DevToolConnection
+  (transmit! [this EQL]
+    ;; TASK: Implement capturing the return value
+    (let [id               (random-uuid)
+          response-channel (async/chan)]
+      (vswap! active-requests id response-channel)
+      (TODO! my-target-uuid {mk/eql        EQL
+                             mk/request-id id})
+      (async/go
+        (let [timeout (async/timeout 10000)
+              [r channel] (async/alts! [response-channel timeout] :priority true)]
+          (if (= channel timeout)
+            (do
+              (log/error "Request to devtool timed out" EQL)
+              {mk/error "Request timed out"})
+            r))))))
+
+(deftype WebsocketDevtoolConnectionFactory []
+  target/DevToolConnectionFactory
+  (-connect! [this target-description async-pathom-processor]
+    ;; TASK: Register a target ID
+    (let [target-id (random-uuid)]
+      ;; TASK: Connect async processor for incoming requests
+      (->WebsocketConnection target-id (volatile! {})))))
+
+(target/set-factory! (->WebsocketDevtoolConnectionFactory))

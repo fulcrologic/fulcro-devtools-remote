@@ -3,11 +3,13 @@
     [cljs.core.async :as async]
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.message-keys :as mk]
+    [com.fulcrologic.devtools.schemas]
     [com.fulcrologic.devtools.transit :as encode]
     [com.fulcrologic.fulcro.application]
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
     [com.fulcrologic.fulcro.networking.mock-server-remote :as mock-net]
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn >defn- ?]]
     [edn-query-language.core :as eql]
     [taoensso.timbre :as log]))
 
@@ -28,16 +30,18 @@
   (action [{:keys [state]}]
     (swap! state assoc :devtool/active-targets ts)))
 
-(defn watch-targets!
+(>defn watch-targets!
   "Installs (or replaces) a watch on the active targets such that a mutation is run on `app` to transact :devtool/active-targets into
    the app state at :devtool/active-targets."
   [app]
+  [:fulcro/application => :nil]
   (remove-watch active-target-descriptors ::active-targets)
   (add-watch active-target-descriptors ::active-targets
     (fn [_ _ _ new]
       (comp/transact! app [(update-active-targets new)]))))
 
-(defn- listen-to-service-worker! [^js port push-handler]
+(>defn- listen-to-service-worker! [^js port push-handler]
+  [:chrome/service-worker-port fn? => :chrome/service-worker-port]
   (.addListener (.-onMessage port)
     (fn [^js msg]
       ;; raw message is not augmented by transfer
@@ -67,13 +71,15 @@
 
   port)
 
-(defn- send-to-target! [port target-id request-id EQL]
+(>defn- send-to-target! [^js port target-id request-id EQL]
+  [:chrome/service-worker-port :uuid :uuid :EQL/expression => :nil]
   (.postMessage port #js {"tab-id" current-tab-id
                           "data"   (encode/write
                                      {mk/request-id request-id
                                       mk/target-id  target-id
                                       mk/eql        EQL
-                                      mk/tab-id     current-tab-id})}))
+                                      mk/tab-id     current-tab-id})})
+  nil)
 
 (defn devtool-remote
   "A Fulcro remote that will send/receive traffic with the background service worker.

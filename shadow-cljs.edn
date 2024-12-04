@@ -34,16 +34,16 @@
                                   :modules          {:main {:entries [devtool.chrome-app]}}}
 
           :electron-main         {:target           :node-script
-                                  :main             fulcro.inspect.electron.background.main/init
+                                  :main             com.fulcrologic.devtools.electron.background.main/init
                                   :devtools         {:devtools-url "http://localhost:9632"
-                                                     :after-load   fulcro.inspect.electron.background.main/done}
+                                                     :after-load   com.fulcrologic.devtools.electron.background.main/done}
                                   :compiler-options {:optimizations :simple}
                                   :output-to        "shells/electron/js/background/main.js"}
 
           :electron-renderer     {:target           :browser
-                                  :modules          {:main {:entries [fulcro.inspect.electron.renderer.main]}}
+                                  :modules          {:main {:entries [com.fulcrologic.devtools.electron.renderer.main]}}
                                   :devtools         {:devtools-url "http://localhost:9632"
-                                                     :after-load   fulcro.inspect.electron.renderer.main/start}
+                                                     :after-load   com.fulcrologic.devtools.electron.renderer.main/start}
                                   :compiler-options {:optimizations :simple}
                                   :output-dir       "shells/electron/js/renderer"
                                   :asset-path       "js/renderer"}}}

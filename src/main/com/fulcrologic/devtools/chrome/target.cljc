@@ -6,9 +6,11 @@
     [cljs.core.async :as async]
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.message-keys :as mk]
+    [com.fulcrologic.devtools.schemas :as schema]
     [com.fulcrologic.devtools.target :refer [DEBUG INSPECT]]
     [com.fulcrologic.devtools.utils :as utils :refer [isoget isoget-in]]
     [com.fulcrologic.fulcro.inspect.transit :as encode]
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn >defn- ?]]
     [taoensso.timbre :as log]))
 
 (declare push!)
@@ -18,6 +20,7 @@
 (defonce target-processors (volatile! {}))
 
 (defn- handle-devtool-message [message]
+  [::schema/devtool-message => :nil]
   (let [target-id  (mk/target-id message)
         EQL        (mk/eql message)
         processor  (get-in @target-processors [target-id :parser])
@@ -41,18 +44,21 @@
                      :EQL              EQL
                      :processor-found? (boolean processor)})))))
 
-(defn- event-data
+(>defn- event-data
   "Decode a js event"
   [^js event]
+  [:chrome.event/content-script->target-event => ::schema/devtool-message]
   (js/console.log "Decoding" event)
   ;; Events augment the message and put in the data field.
   ;; All DOM listeners send/receive events
   (let [message (some-> event (isoget-in ["data" constants/content-script->target-key "data"]) encode/read)]
     message))
 
-(defn- devtool-message? [^js event]
-  (and (identical? (.-source event) js/window)
-    (isoget (.-data event) constants/content-script->target-key)))
+(>defn- devtool-message? [^js event]
+  [:js/event => :boolean]
+  (boolean
+    (and (identical? (.-source event) js/window)
+      (isoget (.-data event) constants/content-script->target-key))))
 
 (defn- listen-for-content-script-messages!
   "Add an event listener for incoming messages that will decode them, run them though the async parser, and then
@@ -75,9 +81,10 @@
            (handle-devtool-message (event-data event))))
        false)))
 
-(defn push!
+(>defn push!
   "Push a message from your application to the dev tool it is connected to."
   [target-id data]
+  [:uuid ::schema/devtool-message => :nil]
   #?(:cljs
      (try
        (let [data (-> data
@@ -104,7 +111,7 @@
          (reset! started?* true)
          (listen-for-content-script-messages!)))))
 
-(defn target-started!
+(>defn target-started!
   "Register your target with the Devtools communications, if available. See `target` ns docstring for
    instructions on enabling/disabling tooling.
 
@@ -117,6 +124,7 @@
    Communications will always include the target-id so that if you have multiple targets on page we can
    route the messages accordingly."
   [target-description async-pathom-processor]
+  [:string fn? => (? :uuid)]
   (when (and (or DEBUG INSPECT) (not= "disabled" INSPECT))
     (let [target-id (random-uuid)]
       (log/debug "Target activated by application on web page" target-id target-description)

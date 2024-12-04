@@ -1,6 +1,5 @@
 (ns target-app.main
   (:require
-    [com.fulcrologic.devtools.chrome.target :as t]
     [com.fulcrologic.devtools.target :as dt]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.normalize :as fnorm]
@@ -73,7 +72,7 @@
           counters  (vals (:counter/id state-map))]
       {:counter/stats
        {:stats/number-of-counters (count counters)
-        :stats/sum-of-counters (reduce + 0 (map :counter/n counters))}}))
+        :stats/sum-of-counters    (reduce + 0 (map :counter/n counters))}}))
 
   (defonce parser (p/async-parser {::p/env     {::p/reader [p/map-reader
                                                             pc/async-reader2
@@ -91,7 +90,7 @@
   (app/mount! app2 Root "app2")
   (dt/ilet [{app1-rta ::app/runtime-atom} app1
             {app2-rta ::app/runtime-atom} app2]
-    (swap! app1-rta assoc ::id (t/target-started! "App 1" (partial tooling-processor app1)))
-    (swap! app2-rta assoc ::id (t/target-started! "App 2" (partial tooling-processor app2)))))
+    (swap! app1-rta assoc ::dtconn (dt/connect! "App 1" (partial tooling-processor app1)))
+    (swap! app2-rta assoc ::dtconn (dt/connect! "App 2" (partial tooling-processor app2)))))
 
 (start)

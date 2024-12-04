@@ -15,15 +15,55 @@
   If your tool TARGET is CLJ, then use Java properties
   \"com.fulcrologic.devtools.target.DEBUG\" and \"com.fulcrologic.devtools.target.INSPECT\" for the same effects.
   "
-  #?(:cljs (:require-macros com.fulcrologic.devtools.target)))
-
-(defonce registered-target-processors (atom {}))
+  #?(:cljs (:require-macros com.fulcrologic.devtools.target))
+  (:require
+    [potemkin.types :refer [defprotocol+]]
+    [com.fulcrologic.devtools.schemas :as schema]
+    [com.fulcrologic.guardrails.malli.core :refer [>defn => >def]]))
 
 (def INSPECT
   #?(:clj  (System/getProperty "com.fulcrologic.devtools.target.INSPECT")
      :cljs (goog-define INSPECT false)))
 
 (def DEBUG #?(:cljs goog.DEBUG :clj (System/getProperty "com.fulcrologic.devtools.target.DEBUG")))
+
+(defprotocol+ DevToolConnection
+  (transmit! [this EQL]
+    "Low-level method that can run arbitrary EQL against the dev tool. Returns a core.async channel that
+     contains the EQL result."))
+
+(>def ::DevToolConnection [:fn #(satisfies? % DevToolConnection)])
+
+(defprotocol+ DevToolConnectionFactory
+  (-connect! [this target-description async-pathom-processor]))
+
+(>def ::DevToolConnectionFactory [:fn #(satisfies? % DevToolConnectionFactory)])
+
+(def -current-devtool-connection-factory-atom (atom nil))
+(>defn set-factory!
+  "Configure the dev tool connection factory. Use one of the preloads to do this for you."
+  [f]
+  [::DevToolConnectionFactory => :nil]
+  (reset! -current-devtool-connection-factory-atom f)
+  nil)
+
+(>defn connect!
+  "Register your target with the Devtools communications, if available. See ns docstring for
+   instructions on enabling/disabling tooling.
+
+   Returns a DevToolConnection which can execute transactions and loads against the remote dev tool.
+
+   `target-description` is a string that will be sent to label the target.
+
+   Communications will always include the target-id so that if you have multiple targets on page we can
+   route the messages accordingly.
+
+   Will do NOTHING if the devtool connection factory has not been initialized. Be sure you have done a preload
+   to configure the factory."
+  [target-description async-pathom-processor]
+  [:string fn? => :nil]
+  (when @-current-devtool-connection-factory-atom
+    (-connect! @-current-devtool-connection-factory-atom target-description async-pathom-processor)))
 
 #?(:clj
    (defmacro ido

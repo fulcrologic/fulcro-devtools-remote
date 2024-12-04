@@ -1,13 +1,16 @@
 {:paths   ["src/main"]
 
  :deps
- {com.fulcrologic/fulcro {:mvn/version "3.7.10"}
-  com.taoensso/timbre    {:mvn/version "6.5.0"}
-  com.taoensso/sente     {:mvn/version "1.19.1"}
-  com.wsscode/pathom     {:mvn/version "2.4.0"}
-  edn-query-language/eql {:mvn/version "1.0.2"}
-  org.clojure/clojure    {:mvn/version "1.11.4"}
-  org.clojure/core.async {:mvn/version "1.6.681"}}
+ {com.fulcrologic/fulcro     {:mvn/version "3.7.10"}
+  com.taoensso/timbre        {:mvn/version "6.5.0"}
+  com.taoensso/sente         {:mvn/version "1.19.1"}
+  com.wsscode/pathom         {:mvn/version "2.4.0"}
+  com.fulcrologic/guardrails {:mvn/version "1.2.9"}
+  metosin/malli              {:mvn/version "0.16.1"}
+  potemkin/potemkin          {:mvn/version "0.4.7"}
+  edn-query-language/eql     {:mvn/version "1.0.2"}
+  org.clojure/clojure        {:mvn/version "1.11.4"}
+  org.clojure/core.async     {:mvn/version "1.6.681"}}
 
  :aliases {:dev {:extra-paths ["src/example"]
                  :extra-deps  {org.clojure/clojurescript                       {:mvn/version "1.11.132"}

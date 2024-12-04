@@ -2,20 +2,21 @@
   "A middleman facilitating communication between the content script
    injected into the page with your target app(s)
    and your Chrome dev tool panel."
-  (:require [com.fulcrologic.devtools.constants :as constants]
-            [com.fulcrologic.devtools.message-keys :as mk]
-            [com.fulcrologic.devtools.transit :as encode]
-            [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]))
+  (:require
+    [com.fulcrologic.devtools.constants :as constants]
+    [com.fulcrologic.devtools.message-keys :as mk]
+    [com.fulcrologic.devtools.transit :as encode]
+    [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]
+    [com.fulcrologic.guardrails.malli.core :refer [=> >def >defn ?]]))
 
 (defonce tab-id->content-script-connection (atom {}))
 (defonce tab-id->devtool-connection (atom {}))
 (defonce tab-id->targets (atom {}))
 
-(defn broadcast [msg] (js/chrome.tabs.sendMessage msg))
-
-(defn handle-devtool-message
+(>defn handle-devtool-message
   "Handle a message from the DevTools pane"
   [^js devtool-port ^js message]
+  [:chrome/service-worker-port :chrome/devtool->service-worker-message => :nil]
   (if-let [tab-id (isoget message "tab-id")]
     (do
       (js/console.log "Devtool message received by background script:" message)
@@ -25,7 +26,8 @@
           (js/console.log "Forwarding message to content script")
           (.postMessage target-port message))
         (js/console.warn "No port to forward incoming message from devtool for tab" tab-id)))
-    (js/console.error "Message received with NO TAB ID from dev tool!")))
+    (js/console.error "Message received with NO TAB ID from dev tool!"))
+  nil)
 
 (defn set-icon-and-popup [tab-id]
   (js/chrome.action.setIcon
@@ -39,22 +41,23 @@
     #js {:tabId tab-id
          :popup "popups/enabled.html"}))
 
-(defn handle-content-script-message
+(>defn handle-content-script-message
   "Handle a message from the content script"
   [tab-id ^js message]
+  [:int :transit/encoded-string => :nil]
   ;; Message through the port is NOT wrapped in extra js crap
   (js/console.log "Content script sending message" message "targeted to" tab-id "devtool")
-  (let [^js target-port (get @tab-id->devtool-connection tab-id)]
-    (let [decoded-msg (encode/read message)]
-      (let [target-descriptors (mk/active-targets decoded-msg)]
-        (when target-descriptors
-          (js/console.log "Service worker tracking targets" target-descriptors)
-          (swap! tab-id->targets assoc tab-id target-descriptors)))
+  (let [^js target-port (get @tab-id->devtool-connection tab-id)
+        decoded-msg     (encode/read message)]
+    (let [target-descriptors (mk/active-targets decoded-msg)]
+      (when target-descriptors
+        (js/console.log "Service worker tracking targets" target-descriptors)
+        (swap! tab-id->targets assoc tab-id target-descriptors)))
 
-      (if target-port
-        (.postMessage target-port (encode/write
-                                    (assoc decoded-msg mk/active-targets (get @tab-id->targets tab-id))))
-        (js/console.error "Unable to find dev tool for tab" tab-id)))))
+    (if target-port
+      (.postMessage target-port (encode/write
+                                  (assoc decoded-msg mk/active-targets (get @tab-id->targets tab-id))))
+      (js/console.error "Unable to find dev tool for tab" tab-id))))
 
 (defn add-listener []
   (js/chrome.runtime.onConnect.addListener

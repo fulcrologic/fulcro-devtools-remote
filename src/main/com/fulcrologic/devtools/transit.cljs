@@ -1,7 +1,9 @@
 (ns com.fulcrologic.devtools.transit
-  (:require [cognitect.transit :as t]
-            [com.cognitect.transit.types :as ty]
-            [com.fulcrologic.fulcro.algorithms.transit :as ft]))
+  (:require
+    [cognitect.transit :as t]
+    [com.cognitect.transit.types :as ty]
+    [com.fulcrologic.fulcro.algorithms.transit :as ft]
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn ?]]))
 
 (deftype ErrorHandler []
   Object
@@ -23,11 +25,13 @@
 (def read-handlers
   {"js-error" (fn [[msg data]] (ex-info msg data))})
 
-(defn read [str]
+(>defn read [str]
+  [:string => :any]
   (let [reader (ft/reader {:handlers read-handlers})]
     (t/read reader str)))
 
-(defn write [x]
+(>defn write [x]
+  [:any => :string]
   (let [writer (ft/writer {:handlers write-handlers})]
     (t/write writer x)))
 
