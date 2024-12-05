@@ -1,10 +1,17 @@
 (ns com.fulcrologic.devtools.schemas
   (:require
     #?(:cljs [goog.object :as gobj])
-    [com.fulcrologic.guardrails.malli.core :refer [>def]]
+    [clojure.core.async.impl.protocols :as asyncp]
+    [com.fulcrologic.devtools.js-support :refer [js? js]]
+    [com.fulcrologic.guardrails.malli.core :refer [>def >defn => ? >defn-]]
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.devtools.constants :as constants]
     [malli.core :as m]))
+
+(defn chan?
+  "Check if c is a core.async channel."
+  [c]
+  (satisfies? asyncp/ReadPort c))
 
 (defn- isoget
   ([obj k]
@@ -30,9 +37,15 @@
              (m/validate schema kv))))
        key-specs))])
 
+(defn js-map [& key-specs]
+  [:and
+   :javascript/object
+   (apply iso-map key-specs)])
+
 (>def :cljc/map #?(:clj  map?
-                   :cljs [:or map? [:fn #(goog/isObject %)]]))
+                   :cljs [:or map? [:fn {:error/message "Must be js obj"} object?]]))
 (>def :cljc/map-key [:or :string :keyword])
+(>def :javascript/object [:fn js?])
 (>def :chrome/service-worker-port :any)
 (>def :transit/encoded-string :string)
 (>def :chrome/devtool->service-worker-message (iso-map
@@ -92,3 +105,5 @@
     [mk/timestamp {:optional true} inst?]
     [mk/tab-id {:optional true} :int]
     [mk/response {:optional true} map?]]])
+
+(>def :async/channel [:fn {:error/message "Must be an async channel"} chan?])

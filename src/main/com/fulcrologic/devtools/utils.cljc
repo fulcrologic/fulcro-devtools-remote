@@ -1,7 +1,9 @@
 (ns com.fulcrologic.devtools.utils
+  #?(:cljs (:require-macros com.fulcrologic.devtools.utils))
   (:require
     #?@(:cljs [[goog.object :as gobj]])
     [com.fulcrologic.devtools.schemas]
+    [com.fulcrologic.devtools.js-support :refer [js?]]
     [com.fulcrologic.guardrails.malli.core :refer [>defn => ?]]
     [clojure.walk :refer [prewalk]]))
 
@@ -22,8 +24,9 @@
    (isoget obj k nil))
   ([obj k default]
    [(? :cljc/map) :cljc/map-key :any => :any]
-   #?(:clj  (get obj k default)
-      :cljs (or (gobj/get obj (some-> k (name))) default))))
+   (let [k (if (js? obj) (name k) k)]
+     #?(:clj  (get obj k default)
+        :cljs (or (gobj/get obj k) default)))))
 
 (>defn isoget-in
   "Like get-in, but for js objects, and in CLJC. In clj, it is just get-in. In cljs it is
@@ -33,7 +36,7 @@
    (isoget-in obj kvs nil))
   ([obj kvs default]
    [(? :cljc/map) [:vector {:error/message "kvs must be a vector"} :cljc/map-key] :any => :any]
-   #?(:clj (get-in obj kvs default)
-      :cljs
-      (let [ks (mapv (fn [k] (some-> k name)) kvs)]
-        (or (apply gobj/getValueByKeys obj ks) default)))))
+   (let [kvs (if (js? obj) (mapv name kvs) kvs)]
+     #?(:clj (get-in obj kvs default)
+        :cljs
+        (or (apply gobj/getValueByKeys obj kvs) default)))))

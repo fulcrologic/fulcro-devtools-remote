@@ -1,5 +1,5 @@
 {:defn-macro             nil
- :throw?                 false
+ :throw?                 true
  :async?                 false
  :guardrails/mcps        50
  :guardrails/compact?    true
