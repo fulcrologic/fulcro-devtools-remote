@@ -40,6 +40,7 @@
 (defn- listen-to-service-worker! [^js port push-handler]
   (.addListener (.-onMessage port)
     (fn [^js msg]
+      ;; raw message is not augmented by transfer
       (js/console.log "Devtool layer received service worker message" msg)
       (let [decoded-message  (log/spy :info (encode/read msg))
             request-id       (mk/request-id decoded-message)

@@ -15,6 +15,7 @@
   [^js background-script-port]
   (.addListener (.-onMessage background-script-port)
     (fn [^js msg]
+      ;; msg contains "data" and "tab-id", but only because we put it there
       (js/console.log "Content script received message from service worker" msg)
       (send-to-target! (clj->js {constants/content-script->target-key msg})))))
 

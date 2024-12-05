@@ -42,6 +42,7 @@
 (defn handle-content-script-message
   "Handle a message from the content script"
   [tab-id ^js message]
+  ;; Message through the port is NOT wrapped in extra js crap
   (js/console.log "Content script sending message" message "targeted to" tab-id "devtool")
   (let [^js target-port (get @tab-id->devtool-connection tab-id)]
     (let [decoded-msg (encode/read message)]

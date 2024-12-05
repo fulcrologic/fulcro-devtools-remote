@@ -45,6 +45,8 @@
   "Decode a js event"
   [^js event]
   (js/console.log "Decoding" event)
+  ;; Events augment the message and put in the data field.
+  ;; All DOM listeners send/receive events
   (let [message (some-> event (isoget-in ["data" constants/content-script->target-key "data"]) encode/read)]
     message))
 
