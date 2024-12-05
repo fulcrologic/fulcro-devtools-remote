@@ -4,8 +4,10 @@
     [clojure.core.async.impl.protocols :as asyncp]
     [com.fulcrologic.devtools.js-support :refer [js? js]]
     [com.fulcrologic.guardrails.malli.core :refer [>def >defn => ? >defn-]]
+    [com.fulcrologic.guardrails.malli.registry :as gr.reg]
     [com.fulcrologic.devtools.message-keys :as mk]
     [com.fulcrologic.devtools.constants :as constants]
+    [taoensso.timbre :as log]
     [malli.core :as m]))
 
 (defn chan?
@@ -23,7 +25,7 @@
 (defn iso-map
   "Returns a Malli spec that can check a JSON OR EDN map."
   [& key-specs]
-  [:fn
+  [:fn {:error/message "Invalid map content"}
    (fn [v]
      (every?
        (fn [kspec]
@@ -34,7 +36,7 @@
                kv       (isoget v data-key)]
            (if (and optional (nil? kv))
              true
-             (m/validate schema kv))))
+             (m/validate schema kv {:registry gr.reg/registry}))))
        key-specs))])
 
 (defn js-map [& key-specs]
@@ -45,12 +47,12 @@
 (>def :cljc/map #?(:clj  map?
                    :cljs [:or map? [:fn {:error/message "Must be js obj"} object?]]))
 (>def :cljc/map-key [:or :string :keyword])
-(>def :javascript/object [:fn js?])
-(>def :chrome/service-worker-port :any)
+(>def :javascript/object [:fn {:error/message "not a js object"} js?])
+(>def :chrome/service-worker-port (js-map [:name :string]))
 (>def :transit/encoded-string :string)
-(>def :chrome/devtool->service-worker-message (iso-map
-                                                [:data :transit/encoded-string]
-                                                [:tab-id :int]))
+(>def :chrome/service-worker-message (js-map
+                                       [:data :transit/encoded-string]
+                                       [:tab-id :int]))
 (defn atom? [a] #?(:cljs (satisfies? IAtom a) :clj (instance? clojure.lang.Atom a)))
 (>def :clojure/atom [:fn {:error/message "Expected an atom"} atom?])
 (>def :fulcro/application [:map

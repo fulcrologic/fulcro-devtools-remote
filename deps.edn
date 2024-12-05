@@ -7,7 +7,6 @@
   com.wsscode/pathom         {:mvn/version "2.4.0"}
   com.fulcrologic/guardrails {:mvn/version "1.2.9"}
   metosin/malli              {:mvn/version "0.16.1"}
-  potemkin/potemkin          {:mvn/version "0.4.7"}
   edn-query-language/eql     {:mvn/version "1.0.2"}
   org.clojure/clojure        {:mvn/version "1.11.4"}
   org.clojure/core.async     {:mvn/version "1.6.681"}}

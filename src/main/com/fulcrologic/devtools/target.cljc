@@ -17,8 +17,7 @@
   "
   #?(:cljs (:require-macros com.fulcrologic.devtools.target))
   (:require
-    [potemkin.types :refer [defprotocol+]]
-    [com.fulcrologic.devtools.schemas :as schema]
+    [com.fulcrologic.devtools.schemas]
     [com.fulcrologic.guardrails.malli.core :refer [>defn => >def]]))
 
 (def INSPECT
@@ -27,14 +26,14 @@
 
 (def DEBUG #?(:cljs goog.DEBUG :clj (System/getProperty "com.fulcrologic.devtools.target.DEBUG")))
 
-(defprotocol+ DevToolConnection
+(defprotocol DevToolConnection
   (transmit! [this EQL]
     "Low-level method that can run arbitrary EQL against the dev tool. Returns a core.async channel that
      contains the EQL result."))
 
 (>def ::DevToolConnection [:fn #(satisfies? % DevToolConnection)])
 
-(defprotocol+ DevToolConnectionFactory
+(defprotocol DevToolConnectionFactory
   (-connect! [this target-description async-pathom-processor]))
 
 (>def ::DevToolConnectionFactory [:fn #(satisfies? % DevToolConnectionFactory)])

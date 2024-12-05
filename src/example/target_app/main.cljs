@@ -40,7 +40,7 @@
 (defmutation add-counter [_]
   (action [{:keys [app state]}]
     (let [next-id (inc (reduce max 0 (mapv :counter/id (vals (:counter/id @state)))))]
-      (dt/ido
+      #_(dt/ido
         ;; Tell the dev tool that I added a counter
         (t/push! (devtool-target-id app) {:action     `add-counter
                                           :counter/id next-id}))

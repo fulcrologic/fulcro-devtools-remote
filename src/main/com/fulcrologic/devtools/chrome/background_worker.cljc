@@ -5,11 +5,9 @@
   (:require
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.js-support :refer [js log!]]
-    [com.fulcrologic.devtools.message-keys :as mk]
-    [com.fulcrologic.devtools.schemas :refer [js-map]]
-    [com.fulcrologic.devtools.transit :as encode]
     [com.fulcrologic.devtools.utils :refer [isoget isoget-in]]
-    [com.fulcrologic.guardrails.malli.core :refer [=> >defn]]))
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn ?]]
+    [taoensso.encore :refer [remove-vals]]))
 
 (defonce tab-id->content-script-connection (atom {}))
 (defonce tab-id->devtool-connection (atom {}))
@@ -28,19 +26,36 @@
 
 (>defn post-message! [port msg]
   [:chrome/service-worker-port :javascript/object => :nil]
-  #?(:cljs (.postMessage ^js port msg))
+  #?(:cljs (.postMessage port msg))
   nil)
+
+(>defn remember-content-script-port! [tab-id port]
+  [:int :chrome/service-worker-port => :nil]
+  (swap! tab-id->content-script-connection assoc tab-id port)
+  nil)
+
+(>defn content-script-port [tab-id]
+  [:int => (? :chrome/service-worker-port)]
+  (get @tab-id->content-script-connection tab-id))
+
+(>defn remember-devtool-port! [tab-id port]
+  [:int :chrome/service-worker-port => :nil]
+  (swap! tab-id->devtool-connection assoc tab-id port)
+  nil)
+
+(>defn devtool-port [tab-id]
+  [:int => (? :chrome/service-worker-port)]
+  (get @tab-id->devtool-connection tab-id))
 
 (>defn handle-devtool-message
   "Handle a message from the DevTools pane"
-  [^js devtool-port ^js message]
-  [:chrome/service-worker-port (js-map
-                                 [:tab-id :int]) => :nil]
+  [devtool-port message]
+  [:chrome/service-worker-port :chrome/service-worker-message => :nil]
   (let [tab-id (isoget message "tab-id")]
     (do
       (log! "Devtool message received by background script:" message)
-      (swap! tab-id->devtool-connection assoc tab-id devtool-port)
-      (if-let [target-port (get @tab-id->content-script-connection tab-id)]
+      (remember-devtool-port! tab-id devtool-port)
+      (if-let [target-port (content-script-port tab-id)]
         (do
           (log! "Forwarding message to content script")
           (post-message! target-port message))
@@ -63,53 +78,58 @@
   [tab-id message]
   [:int :transit/encoded-string => :nil]
   ;; Message through the port is NOT wrapped in extra js crap
-  (log! "Content script sending message" message "targeted to" tab-id "devtool")
-  (let [target-port (get @tab-id->devtool-connection tab-id)
-        decoded-msg (encode/read message)]
-    (let [target-descriptors (mk/active-targets decoded-msg)]
-      (when target-descriptors
-        (log! "Service worker tracking targets" target-descriptors)
-        (swap! tab-id->targets assoc tab-id target-descriptors)))
-
+  (let [target-port (devtool-port tab-id)]
     (if target-port
-      (post-message! target-port (encode/write
-                                   (assoc decoded-msg mk/active-targets (get @tab-id->targets tab-id))))
+      (post-message! target-port message)
       (log! "Unable to find dev tool for tab" tab-id)))
   nil)
 
+(>defn add-runtime-on-connect-listener! [listener]
+  [fn? => :any]
+  #?(:cljs (js/chrome.runtime.onConnect.addListener listener)))
+(>defn add-on-disconnect-listener! [port listener]
+  [:chrome/service-worker-port fn? => :any]
+  #?(:cljs (.addListener (.onDisconnect ^js port) listener)))
+(>defn add-on-message-listener! [port listener]
+  [:chrome/service-worker-port fn? => :any]
+  #?(:cljs (.addListener (.onMessage ^js port) listener)))
+
+(>defn remove-on-message-listener! [port listener]
+  [:chrome/service-worker-port fn? => :any]
+  #?(:cljs (.removeListener (.onMessage ^js port) listener)))
+
+(defn on-content-script-disconnect [tab-id listener port]
+  (remove-on-message-listener! port listener)
+  (swap! tab-id->targets dissoc tab-id)
+  (swap! tab-id->content-script-connection dissoc tab-id))
+
+(defn on-runtime-connect [port]
+  (log! "Service worker detected connection" port)
+  (condp = (isoget port "name")
+    constants/content-script-port-name
+    (do
+      (let [tab-id   (isoget-in port ["sender" "tab" "id"])
+            listener (partial handle-content-script-message tab-id)]
+        (log! "Connection from content script for tab id" tab-id)
+        (set-icon-and-popup tab-id)
+        (remember-content-script-port! tab-id port)
+
+        (add-on-message-listener! port listener)
+        (add-on-disconnect-listener! port (partial on-content-script-disconnect tab-id listener))))
+
+    constants/devtool-port-name
+    (let [listener (partial handle-devtool-message port)]
+      (log! "Devtool connected")
+      (add-on-message-listener! port listener)
+      (add-on-disconnect-listener! port
+        (fn [port]
+          (remove-on-message-listener! port listener)
+          (swap! tab-id->devtool-connection (fn [m] (remove-vals #(= % port) m))))))
+
+    (log! "Ignoring connection" (isoget port "name"))))
+
 (defn add-listener []
-  (js/chrome.runtime.onConnect.addListener
-    (fn [^js port]
-      (log! "Service worker detected connection" port)
-      (condp = (isoget port "name")
-        constants/content-script-port-name
-        (do
-          (let [tab-id   (isoget-in port ["sender" "tab" "id"])
-                listener (partial handle-content-script-message tab-id)]
-            (log! "Connection from content script for tab id" tab-id)
-            (set-icon-and-popup tab-id)
-            (swap! tab-id->content-script-connection assoc tab-id port)
-
-            (.addListener (.-onMessage port) listener)
-            (.addListener (.-onDisconnect port)
-              (fn [^js port]
-                (.removeListener (.-onMessage port) listener)
-                (swap! tab-id->targets dissoc tab-id)
-                (swap! tab-id->content-script-connection dissoc tab-id)))))
-
-        constants/devtool-port-name
-        (let [listener (partial handle-devtool-message port)]
-          (log! "Devtool connected")
-          (.addListener (.-onMessage port) listener)
-          (.addListener (.-onDisconnect port)
-            (fn [^js port]
-              (.removeListener (.-onMessage port) listener)
-              (when-let [port-key (->> @tab-id->devtool-connection
-                                    (keep (fn [[k v]] (when (= v port) k)))
-                                    (first))]
-                (swap! tab-id->devtool-connection dissoc port-key)))))
-
-        (log! "Ignoring connection" (isoget port "name"))))))
+  (add-runtime-on-connect-listener! on-runtime-connect))
 
 (defn init []
   (add-listener)
