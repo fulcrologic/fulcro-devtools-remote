@@ -6,6 +6,10 @@
   "The well-known message key for communicating which devtool tab you want to talk to from the bg script"
   ::tab-id)
 
+(def connected?
+  "A key that indicates the connection status changed (true == opened, false == dropped)"
+  ::connected?)
+
 (def target-id
   "The well-known message key for target ID"
   ::target-id)

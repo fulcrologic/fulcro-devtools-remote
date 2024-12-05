@@ -4,6 +4,8 @@
     [com.fulcrologic.devtools.chrome.background-worker :as subj]
     [com.fulcrologic.devtools.constants :as constants]
     [com.fulcrologic.devtools.js-support :refer [js log!]]
+    [com.fulcrologic.devtools.message-keys :as mk]
+    [com.fulcrologic.devtools.transit :as encode]
     [com.fulcrologic.guardrails.malli.fulcro-spec-helpers :refer [provided! when-mocking!]]
     [fulcro-spec.core :refer [=> assertions component specification]]
     [fulcro-spec.mocking :refer [calls-of]]))
@@ -113,7 +115,7 @@
             {:syms [disconnect-listener]} (first (calls-of subj/add-on-disconnect-listener!))]
         (assertions
           "Adds a message listener to the port"
-          port-listened-to => dev-port )
+          port-listened-to => dev-port)
 
         (disconnect-listener dev-port)
 
@@ -121,3 +123,91 @@
           (assertions
             "Sets up disconnections to remove the added listener"
             l => generated-listener))))))
+
+(specification "Connect/disconnect notifications" :focus
+  (subj/clear-connections!)
+
+  (component "Connecting"
+    (when-mocking!
+      (subj/connection-status-changed! ps tab-id up?) => nil
+
+      (subj/remember-devtool-port! content-tab-id dev-port)
+
+      (assertions
+        "Connection of just one side does nothing"
+        (calls-of subj/connection-status-changed!) => [])
+
+      (subj/remember-content-script-port! 42 content-port)
+
+      (assertions
+        "Connection of a different content tab does nothing"
+        (calls-of subj/connection-status-changed!) => [])
+
+      (subj/remember-content-script-port! content-tab-id content-port)
+
+      (let [{:syms [ps up?]} (first (calls-of subj/connection-status-changed!))
+            ports-notified (set ps)]
+        (assertions
+          "notifies both when the connection is established"
+          (count (calls-of subj/connection-status-changed!)) => 1
+          up? => true
+          ports-notified => #{content-port dev-port}))))
+
+  (component "Disconnecting one side"
+    (subj/clear-connections!)
+    (when-mocking!
+      (subj/connection-status-changed! ps tab-id up?) => nil
+
+      (subj/remember-devtool-port! content-tab-id dev-port)
+      (subj/remember-content-script-port! content-tab-id content-port))
+
+    (when-mocking!
+      (subj/connection-status-changed! ps tab-id up?) => nil
+
+      (subj/forget-devtool-port! content-tab-id)
+
+      (let [{:syms [ps up?]} (first (calls-of subj/connection-status-changed!))
+            ports-notified (set ps)]
+        (assertions
+          "Sends a disconnect to the remaining port"
+          up? => false
+          (count (calls-of subj/connection-status-changed!)) => 1
+          ports-notified => #{content-port}))))
+
+  (component "Disconnecting the other side"
+    (subj/clear-connections!)
+    (when-mocking!
+      (subj/connection-status-changed! ps tab-id up?) => nil
+
+      (subj/remember-devtool-port! content-tab-id dev-port)
+      (subj/remember-content-script-port! content-tab-id content-port))
+
+    (when-mocking!
+      (subj/connection-status-changed! ps tab-id up?) => nil
+
+      (subj/forget-content-script-port! content-tab-id)
+
+      (let [{:syms [ps up?]} (first (calls-of subj/connection-status-changed!))
+            ports-notified (set ps)]
+        (assertions
+          "Sends a disconnect to the remaining port"
+          up? => false
+          (count (calls-of subj/connection-status-changed!)) => 1
+          ports-notified => #{dev-port})))))
+
+(specification "connection-status-changed!"
+  (let [status-sent (rand-nth [true false])]
+    (when-mocking!
+      (subj/post-message! p msg) => nil
+
+      (subj/connection-status-changed! [dev-port] content-tab-id status-sent)
+
+      (let [{:syms [p msg]} (first (calls-of subj/post-message!))
+            decoded-msg (encode/read msg)]
+        (assertions
+          "Posts to the port(s)"
+          p => dev-port
+
+          "The message is a transit encoded message with the tab ID and up-status"
+          decoded-msg => {mk/tab-id     content-tab-id
+                          mk/connected? status-sent})))))
