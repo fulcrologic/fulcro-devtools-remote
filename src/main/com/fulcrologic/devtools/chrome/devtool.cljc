@@ -111,6 +111,7 @@
 (defn new-chrome-extension-connection
   "Creates a DevtoolConnection from the Chrome dev tool extension itself. In other words, this is used by your devtool.
    in order to construct a devtool-remote."
+  ;; TASK: There is no push handler. I need an async pathom processor on BOTH ends
   [push-handler]
   (let [port-name (str constants/devtool-port-name ":" current-tab-id)
         port      (runtime-connect! port-name)

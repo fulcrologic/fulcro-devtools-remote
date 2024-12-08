@@ -35,3 +35,7 @@
   [fn? => :any]
   #?(:cljs
      (.addEventListener js/window "message" listener false)))
+
+(>defn set-document-attribute! [name value]
+  [:string :any => :any]
+  #?(:cljs (js/document.documentElement.setAttribute name value)))

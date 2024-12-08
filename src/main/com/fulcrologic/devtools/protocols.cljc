@@ -25,17 +25,19 @@
   (-transmit! conn EQL))
 
 (defprotocol DevToolConnectionFactory
-  (-connect! [this tool-type {:keys [description
-                                     async-processor]}]))
+  (-connect! [this {:keys [description
+                           tool-type
+                           async-processor]}]))
 
 (>def ::DevToolConnectionFactory [:fn #(satisfies? % DevToolConnectionFactory)])
 
-(>defn connect! [factory ttype options]
-  [::DevToolConnectionFactory :qualified-keyword [:map
-                                                  [:description :string]
-                                                  [:async-processor fn?]]
+(>defn connect! [factory options]
+  [::DevToolConnectionFactory [:map
+                               [:description :string]
+                               [:tool-type :qualified-keyword]
+                               [:async-processor fn?]]
    => ::DevToolConnection]
-  (-connect! factory ttype options))
+  (-connect! factory options))
 
 (>def ::DevToolConnectionFactory [:fn #(satisfies? % DevToolConnectionFactory)])
 

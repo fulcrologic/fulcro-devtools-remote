@@ -1,8 +1,8 @@
 (ns com.fulcrologic.devtools.target
   "
-  Target helpers for redacting tool code in production builds.
+  Target helpers for installing devtool connections in dev environments, and redacting all tool code in production builds.
 
-  The macros in the ns emit nothing when goog.DEBUG and INSPECT (in this ns) are false-ish. In CLJS, this forces the
+  The `ido` and `ilet` macros in the ns emit nothing when goog.DEBUG and INSPECT (in this ns) are false-ish. In CLJS, this forces the
   tool code to be present in all but release builds.
 
   But, you can ALWAYS enable tools in production by adding the following to your shadow-cljs compiler config:
@@ -14,12 +14,16 @@
 
   If your tool TARGET is CLJ, then use Java properties
   \"com.fulcrologic.devtools.target.DEBUG\" and \"com.fulcrologic.devtools.target.INSPECT\" for the same effects.
+
+  To use this namespace, make sure you require the correct preload for establishing the kind of devtool connection
+  you expect (e.g. chrome.target, or electron.target).
   "
   #?(:cljs (:require-macros com.fulcrologic.devtools.target))
   (:require
     [com.fulcrologic.devtools.schemas]
     [com.fulcrologic.devtools.protocols :as dp]
-    [com.fulcrologic.guardrails.malli.core :refer [>defn => >def]]))
+    [com.fulcrologic.guardrails.malli.core :refer [>defn => >def]]
+    [taoensso.timbre :as log]))
 
 (def INSPECT
   #?(:clj  (System/getProperty "com.fulcrologic.devtools.target.INSPECT")
@@ -36,7 +40,7 @@
   nil)
 
 (>defn connect!
-  "Register your target with the Devtools communications, if available. See ns docstring for
+  "Create a connection to a Devtool, if available. See ns docstring for
    instructions on enabling/disabling tooling.
 
    Returns a DevToolConnection, which can be used directly to transmit requests, or can be wrapped as a Fulcro Remote.
@@ -44,17 +48,15 @@
    `tool-type` is available in case you have more than one kind of chrome extension, so you can specify which to connect to.
    `target-description` is a string that will be sent to label the target.
 
-   Communications will always include the target-id so that if you have multiple targets on page we can
-   route the messages accordingly.
-
    Will do NOTHING if the devtool connection factory has not been initialized. Be sure you have done a preload
-   that calls `set-factory!` in this ns."
+   that calls the `set-factory!` function of this ns."
   [tool-type target-description async-pathom-processor]
   [:qualified-keyword :string fn? => :nil]
-  (when @-current-devtool-connection-factory-atom
+  (if @-current-devtool-connection-factory-atom
     (dp/-connect! @-current-devtool-connection-factory-atom tool-type
       {:description     target-description
-       :async-processor async-pathom-processor})))
+       :async-processor async-pathom-processor})
+    (log/warn "Cannot connect to devtool. No factory set. Did you make sure a preload was loaded?")))
 
 #?(:clj
    (defmacro ido
