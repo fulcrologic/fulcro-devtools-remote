@@ -18,6 +18,7 @@
   #?(:cljs (:require-macros com.fulcrologic.devtools.target))
   (:require
     [com.fulcrologic.devtools.schemas]
+    [com.fulcrologic.devtools.protocols :as dp]
     [com.fulcrologic.guardrails.malli.core :refer [>defn => >def]]))
 
 (def INSPECT
@@ -26,23 +27,11 @@
 
 (def DEBUG #?(:cljs goog.DEBUG :clj (System/getProperty "com.fulcrologic.devtools.target.DEBUG")))
 
-(defprotocol DevToolConnection
-  (transmit! [this EQL]
-    "Low-level method that can run arbitrary EQL against the dev tool. Returns a core.async channel that
-     contains the EQL result."))
-
-(>def ::DevToolConnection [:fn #(satisfies? % DevToolConnection)])
-
-(defprotocol DevToolConnectionFactory
-  (-connect! [this target-description async-pathom-processor]))
-
-(>def ::DevToolConnectionFactory [:fn #(satisfies? % DevToolConnectionFactory)])
-
 (def -current-devtool-connection-factory-atom (atom nil))
 (>defn set-factory!
   "Configure the dev tool connection factory. Use one of the preloads to do this for you."
   [f]
-  [::DevToolConnectionFactory => :nil]
+  [::dp/DevToolConnectionFactory => :nil]
   (reset! -current-devtool-connection-factory-atom f)
   nil)
 
@@ -50,19 +39,22 @@
   "Register your target with the Devtools communications, if available. See ns docstring for
    instructions on enabling/disabling tooling.
 
-   Returns a DevToolConnection which can execute transactions and loads against the remote dev tool.
+   Returns a DevToolConnection, which can be used directly to transmit requests, or can be wrapped as a Fulcro Remote.
 
+   `tool-type` is available in case you have more than one kind of chrome extension, so you can specify which to connect to.
    `target-description` is a string that will be sent to label the target.
 
    Communications will always include the target-id so that if you have multiple targets on page we can
    route the messages accordingly.
 
    Will do NOTHING if the devtool connection factory has not been initialized. Be sure you have done a preload
-   to configure the factory."
-  [target-description async-pathom-processor]
-  [:string fn? => :nil]
+   that calls `set-factory!` in this ns."
+  [tool-type target-description async-pathom-processor]
+  [:qualified-keyword :string fn? => :nil]
   (when @-current-devtool-connection-factory-atom
-    (-connect! @-current-devtool-connection-factory-atom target-description async-pathom-processor)))
+    (dp/-connect! @-current-devtool-connection-factory-atom tool-type
+      {:description     target-description
+       :async-processor async-pathom-processor})))
 
 #?(:clj
    (defmacro ido

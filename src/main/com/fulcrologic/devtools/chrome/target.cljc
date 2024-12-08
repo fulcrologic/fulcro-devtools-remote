@@ -3,14 +3,19 @@
    so each target must call `target-started!`, but at least ONE target must call `install!`. Ideally you use the
    chrome preload to do this early."
   (:require
-    [cljs.core.async :as async]
+    [clojure.core.async :as async]
     [com.fulcrologic.devtools.constants :as constants]
+    [com.fulcrologic.devtools.js-support :refer [js log!]]
+    [com.fulcrologic.devtools.js-wrappers :refer [add-window-event-message-listener!]]
     [com.fulcrologic.devtools.message-keys :as mk]
+    [com.fulcrologic.devtools.protocols :as dp]
     [com.fulcrologic.devtools.schemas :as schema]
     [com.fulcrologic.devtools.target :refer [DEBUG INSPECT]]
+    [com.fulcrologic.devtools.transit :as encode]
     [com.fulcrologic.devtools.utils :as utils :refer [isoget isoget-in]]
-    [com.fulcrologic.fulcro.inspect.transit :as encode]
     [com.fulcrologic.guardrails.malli.core :refer [=> >defn >defn- ?]]
+    [com.fulcrologic.guardrails.malli.registry :as gr.reg]
+    [malli.core :as m]
     [taoensso.timbre :as log]))
 
 (declare push!)
@@ -46,40 +51,30 @@
 
 (>defn- event-data
   "Decode a js event"
-  [^js event]
-  [:chrome.event/content-script->target-event => ::schema/devtool-message]
-  (js/console.log "Decoding" event)
-  ;; Events augment the message and put in the data field.
-  ;; All DOM listeners send/receive events
+  [event]
+  [:chrome.event/content-script->target => ::schema/devtool-message]
+  (log! "Decoding" event)
   (let [message (some-> event (isoget-in ["data" constants/content-script->target-key "data"]) encode/read)]
     message))
 
-(>defn- devtool-message? [^js event]
+(>defn- devtool-message? [event]
   [:js/event => :boolean]
-  (boolean
-    (and (identical? (.-source event) js/window)
-      (isoget (.-data event) constants/content-script->target-key))))
+  #?(:cljs
+     (let [^js event event]
+       (boolean
+         (and (identical? (.-source event) js/window)
+           (isoget-in event [:data constants/content-script->target-key]))))
+     :clj false))
 
 (defn- listen-for-content-script-messages!
   "Add an event listener for incoming messages that will decode them, run them though the async parser, and then
    push back the result."
   []
   #?(:cljs
-     (.addEventListener js/window "message"
-       (fn [^js event]
-         (js/console.log "Target helper code saw event" event)
-         (when (isoget (.-data event) "describe-targets")
-           (.postMessage js/window
-             (clj->js {constants/target->content-script-key
-                       (encode/write {mk/active-targets
-                                      (into {}
-                                        (map (fn [k]
-                                               [k (get-in @target-processors [k :label] (str "Target:" k))]))
-                                        (keys @target-processors))})})
-             "*"))
+     (add-window-event-message-listener!
+       (fn [event]
          (when (devtool-message? event)
-           (handle-devtool-message (event-data event))))
-       false)))
+           (handle-devtool-message (event-data event)))))))
 
 (>defn push!
   "Push a message from your application to the dev tool it is connected to."
@@ -131,3 +126,29 @@
       (vswap! target-processors assoc target-id {:label  target-description
                                                  :parser async-pathom-processor})
       target-id)))
+
+(deftype ChromeConnection [my-target-uuid active-requests push-handler status-handler]
+  dp/DevToolConnection
+  (-on-status-change [this callback] (vreset! status-handler callback))
+  (-transmit! [this EQL]
+    (let [response-channel (async/chan)]
+      (vswap! active-requests my-target-uuid response-channel)
+      (push! my-target-uuid {mk/eql        EQL
+                             mk/request-id my-target-uuid})
+      (async/go
+        (let [timeout (async/timeout 10000)
+              [r channel] (async/alts! [response-channel timeout] :priority true)]
+          (if (= channel timeout)
+            (do
+              (log/error "Request to devtool timed out" EQL)
+              {mk/error "Request timed out"})
+            r))))))
+
+(deftype ChromeDevtoolConnectionFactory []
+  dp/DevToolConnectionFactory
+  (-connect! [this tool-type {:keys [description async-processor push-handler status-handler]}]
+    (let [vstatus-handler (volatile! status-handler)
+          target-id       (random-uuid)
+          conn            (->ChromeConnection target-id (volatile! {}) push-handler vstatus-handler)]
+      conn)))
+

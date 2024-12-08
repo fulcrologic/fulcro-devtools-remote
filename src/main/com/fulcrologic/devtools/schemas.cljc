@@ -58,12 +58,10 @@
 (>def :fulcro/application [:map
                            [:com.fulcrologic.fulcro.application/runtime-atom :clojure/atom]])
 (>def :chrome.event/content-script->target
-  (iso-map
+  (js-map
     [:data
-     (iso-map
-       [constants/content-script->target-key
-        (iso-map
-          [:data :transit/encoded-string])])]))
+     (js-map
+       [constants/content-script->target-key :chrome/service-worker-message])]))
 
 (>def :chrome.event/target->content-script
   (iso-map

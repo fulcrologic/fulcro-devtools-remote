@@ -1,10 +1,9 @@
 (ns com.fulcrologic.devtools.protocols
   (:require
     [com.fulcrologic.devtools.schemas]
-    [com.fulcrologic.guardrails.malli.core :refer [=> >def >defn]]
-    [potemkin.types :refer [defprotocol+]]))
+    [com.fulcrologic.guardrails.malli.core :refer [=> >def >defn]]))
 
-(defprotocol+ DevToolConnection
+(defprotocol DevToolConnection
   (-on-status-change [this callback] "Private version. Use on-status-change")
   (-transmit! [this EQL] "Private version. Use transmit!"))
 
@@ -25,7 +24,7 @@
   [::DevToolConnection vector? => :async/channel]
   (-transmit! conn EQL))
 
-(defprotocol+ DevToolConnectionFactory
+(defprotocol DevToolConnectionFactory
   (-connect! [this tool-type {:keys [description
                                      async-processor]}]))
 

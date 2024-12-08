@@ -19,8 +19,6 @@
   (let [conn (->FakeConn)]
     (dp/on-status-change conn cb)
     (dp/transmit! conn [:a])
-    #js {}
-    (clj->js {})
 
     (assertions
       "on-status-change pass through to the instance"
