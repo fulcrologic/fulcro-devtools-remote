@@ -1,15 +1,14 @@
 {
-  "name": "fulcro-inspect-electron",
-  "version": "4.0.0-alpha1",
-  "description": "Electron Version of Fulcro Inspect",
-  "homepage": "https://github.com/fulcrologic/fulcro-inspect",
-  "main": "js/background/main.js",
+  "name": "demo-electron",
+  "version": "1.0.0",
+  "description": "Electron Version of Demo",
+  "main": "app/main.js",
   "author": {
     "name": "Tony Kay",
     "email": "tony@fulcrologic.com"
   },
   "license": "MIT",
-  "repository": "https://github.com:/fulcrologic/fulcro-inspect.git",
+  "repository": "https://github.com:/fulcrologic/fulcro-devtool-remote.git",
   "dependencies": {
     "cors": "^2.8.5",
     "electron-settings": "^4.0.4",
@@ -27,7 +26,7 @@
     "dist": "electron-builder"
   },
   "build": {
-    "appId": "com.fulcrologic.fulcro.inspect",
+    "appId": "com.fulcrologic.fulcro-devtool-remote.demo",
     "mac": {
       "category": "public.app-category.developer-tools"
     },

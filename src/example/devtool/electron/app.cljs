@@ -1,13 +1,14 @@
-(ns com.fulcrologic.devtools.electron.background.main
+(ns devtool.electron.app
   (:require
+    [cljs.core.async :as async]
     ["electron" :as electron]
     ["path" :as path]
     ["electron-settings" :as settings]
     ["url" :as url]
-    [cljs.core.async :as async]
+    [com.fulcrologic.devtools.common.message-keys :as mk]
+    [com.fulcrologic.devtools.electron.background.websocket-server :as server]
     [goog.functions :as g.fns]
-    [com.fulcrologic.devtools.electron.background.server :as server]
-    [taoensso.timbre :as log]))
+    [shadow.cljs.modern :refer [js-await]]))
 
 (defn get-setting [k default]
   (let [c (async/chan)]
@@ -23,8 +24,8 @@
     (js->clj (.getBounds window))))
 
 (defn toggle-settings-window! []
-  (server/send-message-to-renderer!
-    {:type :fulcro.inspect.client/toggle-settings :data {}}))
+  (server/send-to-devtool!
+    {mk/request '[(devtool/toggle-settings {})]}))
 
 (defn create-window []
   (async/go
@@ -37,11 +38,9 @@
                          :height         height
                          :x              x
                          :y              y
-                         :webPreferences #js {:contextIsolation true
-                                              :preload          (path/join js/__dirname "preload.js")}})]
-      (.loadURL win (url/format #js {:pathname (path/join js/__dirname ".." ".." "index.html")
-                                     :protocol "file:"
-                                     :slashes  "true"}))
+                         :webPreferences #js {:nodeIntegration true
+                                              :preload          (path/join js/__dirname ".." "preload.js")}})]
+      (.loadFile win (path/join js/__dirname ".." "public" "index.html"))
       (let [save-window-state! (g.fns/debounce #(save-state! win) 500)]
         (doto win
           (.on "resize" save-window-state!)
@@ -79,8 +78,10 @@
       (server/start! (.-webContents win))))
   nil)
 
-(defn init []
-  (electron/app.on "ready" create-window))
-
-(defn done []
-  (js/console.log "Done reloading"))
+(defn ^:export init []
+  (js-await [_ (electron/app.whenReady)]
+    (create-window)
+    (electron/app.on "activate"
+      (fn []
+        (when (zero? (alength (electron/BrowserWindow.getAllWindows)))
+          (create-window))))))

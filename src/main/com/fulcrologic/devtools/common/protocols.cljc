@@ -4,16 +4,9 @@
     [com.fulcrologic.guardrails.malli.core :refer [=> >def >defn]]))
 
 (defprotocol DevToolConnection
-  (-receive [this] "Private. Use receive. ")
   (-transmit! [this target-id edn] "Private version. Use transmit!"))
 
 (>def ::DevToolConnection [:fn {:error/message "Not a dev tool connection"} #(satisfies? DevToolConnection %)])
-
-(>defn receive
-  "Returns a core.async channel that will have the next push notification on it when/if such a message arrives."
-  [conn]
-  [::DevToolConnection => :async/channel]
-  (-receive conn))
 
 (>defn transmit!
   "Low-level method that can send data to the other end of the connection. This is a two-way interaction.

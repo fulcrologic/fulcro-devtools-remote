@@ -73,6 +73,7 @@
           (vswap! vconfig assoc-in [:active-requests request-id] response-channel)
           (post-message! port (encode/write packet))
           (async/go
+            (async/>! send-ch packet)
             (let [timer (async/timeout 10000)
                   [result c] (async/alts! [response-channel timer] :priority true)]
               (if (= c response-channel)
@@ -86,10 +87,11 @@
   [async-processor]
   (let [port-name (str constants/devtool-port-name ":" current-tab-id)
         port      (runtime-connect! port-name)
-        conn      (->ChromeExtensionConnection port (volatile! {:connected?      false
+        send-ch (async/dropping-buffer 10000)
+        conn      (ct/->Connection port (volatile! {:connected?      false
+                                                                :send-ch send-ch
                                                                 :async-processor async-processor
-                                                                :active-requests {}
-                                                                :status-callback nil}))]
+                                                                :active-requests {}}))]
     (add-on-message-listener! port (partial service-worker-message-handler conn))
     conn))
 

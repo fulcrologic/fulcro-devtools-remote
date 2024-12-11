@@ -65,7 +65,6 @@
           (let ~bindings
             ~@body)))))
 
-
 (def -current-devtool-connection-factory-atom (atom nil))
 (>defn set-factory!
   "Configure the dev tool connection factory. Use one of the preloads to do this for you."
@@ -103,7 +102,7 @@
             async-processor (or async-processor
                               (fn [EQL] (res/process-async-request {:devtool/connection @c} EQL)))
             options         (assoc options :async-processor async-processor)
-            connection      (dp/-connect! @-current-devtool-connection-factory-atom options)]
+            connection      (dp/connect! @-current-devtool-connection-factory-atom options)]
         (vreset! c connection)
         connection)
       (log/warn "Cannot connect to devtool. No factory set. Did you make sure a preload was loaded?"))))
