@@ -31,10 +31,10 @@
   "Like get-in, but for js objects, and in CLJC. In clj, it is just get-in. In cljs it is
   gobj/getValueByKeys."
   ([obj kvs]
-   [(? :cljc/map) [:vector {:error/message "kvs must be a vector"} :cljc/map-key] => :any]
+   [(? :cljc/map) [:every {:error/message "kvs must be a vector"} :cljc/map-key] => :any]
    (isoget-in obj kvs nil))
   ([obj kvs default]
-   [(? :cljc/map) [:vector {:error/message "kvs must be a vector"} :cljc/map-key] :any => :any]
+   [(? :cljc/map) [:every {:error/message "kvs must be a vector"} :cljc/map-key] :any => :any]
    #?(:clj (get-in obj kvs (get-in obj (mapv name kvs) default))
       :cljs
       (or (apply gobj/getValueByKeys obj (mapv name kvs)) default))))

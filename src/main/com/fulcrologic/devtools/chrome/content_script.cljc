@@ -8,7 +8,7 @@
                                                   post-message! post-window-message! runtime-connect!]]
     [com.fulcrologic.devtools.common.schemas :refer [js-map]]
     [com.fulcrologic.devtools.common.utils :refer [isoget]]
-    [com.fulcrologic.guardrails.malli.core :refer [=> >defn]]))
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn]] ))
 
 (>defn send-to-target! [msg]
   [(js-map [constants/content-script->target-key :string]) => :nil]

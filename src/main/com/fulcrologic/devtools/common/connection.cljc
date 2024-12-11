@@ -11,9 +11,8 @@
 (>defn connection-config [^Object conn]
   [::dp/DevToolConnection => [:map
                               [:active-requests {:optional true} [:map-of :uuid :async/channel]]
-                              [:target-id :uuid]
-                              [:tool-type :qualified-keyword]
-                              [:description :string]
+                              [:target-id {:optional true} :uuid]
+                              [:description {:optional true} :string]
                               [:send-ch :async/channel]
                               [:async-processor fn?]]]
   (deref (.-vconfig conn)))

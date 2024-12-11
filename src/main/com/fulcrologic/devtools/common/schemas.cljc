@@ -44,10 +44,11 @@
    (apply iso-map key-specs)])
 
 (>def :cljc/map #?(:clj  map?
-                   :cljs [:or map? [:fn {:error/message "Must be js obj"} object?]]))
+                   :cljs [:or map? :javascript/object]))
 (>def :cljc/map-key [:or :string :keyword])
 (>def :javascript/object [:fn {:error/message "not a js object"} js?])
-(>def :chrome/service-worker-port (js-map [:name :string]))
+(>def :chrome/service-worker-port #?(:cljs [:fn (fn [x] (boolean (.-name x)))]
+                                     :clj (js-map [:name :string])))
 (>def :transit/encoded-string :string)
 (>def :chrome/service-worker-message (js-map
                                        [:data :transit/encoded-string]
@@ -57,6 +58,7 @@
 (>def :fulcro/application [:map
                            [:com.fulcrologic.fulcro.application/runtime-atom :clojure/atom]])
 (>def :js/event (js-map [:data :any]))
+(>def :EQL/expression vector?)
 (>def :chrome.event/content-script->target
   (js-map
     [:data

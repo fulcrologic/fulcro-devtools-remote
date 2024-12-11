@@ -51,7 +51,7 @@
 (defn js? [x]
   (boolean
     #?(:clj  (or (number? x) (string? x) (:mockjs? (meta x)))
-       :cljs (or (number? x) (string? x) (array? x) (object? x)))))
+       :cljs true)))
 
 (defn log! [& args]
   #?(:clj
