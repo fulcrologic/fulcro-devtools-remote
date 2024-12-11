@@ -51,7 +51,9 @@
         connected? (log/spy :info (mk/connected? message))
         target-id  (log/spy :info (mk/target-id message))]
     (if (some? connected?)
-      (async-processor [(bi/devtool-connected {:connected? connected?})])
+      (do
+        (log/info "Connected" target-id)
+        (async-processor [(bi/devtool-connected {:connected? connected?})]))
       ;; TASK: need to distinguish between server and client on my uuid...I think this is right?
       (when (or (nil? my-uuid) (= my-uuid target-id))
         (let [EQL        (log/spy :info (mk/request message))

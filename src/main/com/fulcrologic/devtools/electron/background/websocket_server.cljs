@@ -1,22 +1,31 @@
 (ns com.fulcrologic.devtools.electron.background.websocket-server
   (:require
-    ["electron" :refer [ipcMain]]
+    ["electron" :as e :refer [ipcMain]]
     ["electron-settings" :as settings]
+    [cljs.pprint :refer [pprint]]
     [cljs.core.async :as async :refer [<! >! put! take!] :refer-macros [go go-loop]]
     [cljs.nodejs :as nodejs]
     [cognitect.transit :as transit]
-    [com.fulcrologic.devtools.electron.background.agpatch] ; patches goog global for node
+    [com.fulcrologic.devtools.electron.background.agpatch]  ; patches goog global for node
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.devtools.common.transit-packer :as tp]
     [com.fulcrologic.devtools.common.message-keys :as mk]
     [goog.object :as gobj]
-    [taoensso.sente.server-adapters.community.express :as sente-express]
+    [taoensso.encore :as enc]
+    [taoensso.sente.server-adapters.express :as sente-express]
     [taoensso.timbre :as log]))
 
+(log/set-level! :trace)
 (defonce channel-socket-server (atom nil))
+(defonce target-id->client-id (atom {}))
 (defonce content-atom (atom nil))
 (defonce server-atom (atom nil))
 (def vwebsocket-port (volatile! 8237))
+
+(comment
+  (:connected-uids @channel-socket-server)
+  ((:send-fn @channel-socket-server) "61ddf74d-9336-491c-aec6-4e056f10b38f" [:fulcrologic.devtool/event {:x 1}])
+  )
 
 (defn websocket-port [] @vwebsocket-port)
 (defn set-websocket-port! [port] (vreset! vwebsocket-port port))
@@ -85,7 +94,7 @@
       (sente-express/make-express-channel-socket-server!
         {:packer        (tp/make-packer {})
          :csrf-token-fn nil
-         :user-id-fn    :client-id})))
+         :user-id-fn :client-id})))
   (go-loop []
     (when-some [{:keys [client-id event]} (<! (:ch-recv @channel-socket-server))]
       (let [[event-type event-data] event]
@@ -93,9 +102,15 @@
         (log/debug "-> with event data:" event-data)
         (case event-type
           :fulcrologic.devtool/event
-          (send-to-devtool! event-data)
+          (let [target-id (mk/target-id event-data)]
+            (when target-id
+              (swap! target-id->client-id assoc target-id client-id))
+            (send-to-devtool! event-data))
           :chsk/uidport-close
-          (log/debug "lost connection" client-id)
+          (do
+            (log/debug "lost connection" client-id)
+            ;; TASK: Clear target
+            (swap! target-id->client-id (fn [m] (enc/remove-vals (fn [v] (= v client-id)) m))))
           :chsk/uidport-open
           (log/debug "opened connection" client-id)
           :chsk/ws-ping
@@ -120,8 +135,9 @@
 (defn send-to-target! [{::mk/keys [target-id] :as msg}]
   (if-not target-id
     (log/warn "Unable to find app-uuid in message:" msg)
-    (let [{:keys [send-fn]} @channel-socket-server]
-      (send-fn (pr-str target-id) [:fulcrologic.devtool/event msg]))))
+    (let [{:keys [send-fn]} @channel-socket-server
+          client-id (get @target-id->client-id (log/spy :info target-id))]
+      (send-fn (log/spy :info client-id) [:fulcrologic.devtool/event msg]))))
 
 (defn start!
   "Call for overall devtool startup (once)"
@@ -131,8 +147,8 @@
   (start-ws!)
   (.on web-content "dom-ready" (fn on-inspect-reload-request-app-state [] (log/info "DOM READY")))
   ;; LANDMARK: Hook up of incoming messages from dev tool
-  (.on ipcMain "devtool"
+  (e/ipcMain.on "send"
     (fn handle-devtool-message [_ message]
-      (log/trace "Server received message from renderer")
+      (log/info "Server received message from renderer" message)
       (let [msg (encode/read message)]
         (send-to-target! msg)))))

@@ -9,14 +9,17 @@
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.guardrails.malli.core :refer [=> >defn]]
-    [taoensso.encore :as enc]))
+    [taoensso.encore :as enc]
+    [taoensso.timbre :as log]))
 
 (>defn post-message! [msg]
   [:transit/encoded-string => :any]
+  (log/info "TRYING post message (should see a send)")
   #?(:cljs (js/window.electronAPI.send msg)))
 
 (defn service-worker-message-handler [^clj conn _evt msg]
   (let [decoded-message (enc/catching (encode/read msg))]
+    (log/spy :info decoded-message)
     (cc/handle-devtool-message conn decoded-message)))
 
 (defn add-message-listener! [listener] (js/window.electronAPI.listen listener))
@@ -24,8 +27,7 @@
 (defn new-electron-ui-connection
   [async-processor]
   (let [send-ch (async/chan (async/dropping-buffer 10000))
-        conn    (cc/->Connection (volatile! {:connected?      false
-                                             :async-processor async-processor
+        conn    (cc/->Connection (volatile! {:async-processor async-processor
                                              :active-requests {}
                                              :send-ch         send-ch}))]
     (async/go-loop []

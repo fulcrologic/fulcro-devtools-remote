@@ -14,5 +14,3 @@
         nm (:devtool/name app)]
     (dp/transmit! connection id [(bi/target-started {mk/target-id          id
                                                      mk/target-description (or nm (str id))})])))
-
-

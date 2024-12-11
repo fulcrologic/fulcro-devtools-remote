@@ -1,6 +1,8 @@
 (ns com.fulcrologic.devtools.electron.target
   (:require
     [clojure.core.async :as async]
+    [com.fulcrologic.devtools.common.target-default-mutations]
+    [com.fulcrologic.devtools.common.built-in-mutations :as bi]
     [com.fulcrologic.devtools.common.message-keys :as mk]
     [com.fulcrologic.devtools.common.protocols :as dp]
     [com.fulcrologic.devtools.common.connection :as cc]
@@ -27,7 +29,7 @@
   [^clj conn]
   [::dp/DevToolConnection => :any]
   (let [vconfig (.-vconfig conn)
-        {:keys [target-id sente-socket-client send-ch]} (cc/connection-config conn)]
+        {:keys [target-id sente-socket-client async-processor send-ch]} (cc/connection-config conn)]
     (when-not sente-socket-client
       (log/info "Connecting to websockets")
       (try
@@ -36,7 +38,6 @@
                                     :protocol       :http
                                     :host           SERVER_HOST
                                     :port           SERVER_PORT
-                                    :client-id      (pr-str target-id)
                                     :packer         (make-packer)
                                     :wrap-recv-evs? false
                                     :backoff-ms-fn  backoff-ms}
@@ -45,10 +46,12 @@
                                        (assoc socket-client-opts :protocol :https)
                                        socket-client-opts))]
             (add-watch (:state client) ::open-watch
-              (fn [_ _ _ {:keys [open?]}]
-                (async/go
-                  (async/>! (:ch-recv client) [:fulcrologic/devtool {mk/connected? open?
-                                                                     mk/target-id  target-id}]))))
+              (fn [_ _ {was-open? :open?} {:keys [open?]}]
+                (when open?
+                  ((:send-fn client) [:fulcrologic.devtool/event {mk/connected? open?
+                                                                  mk/target-id  target-id}]))
+                (when (not= was-open? open?)
+                  (async-processor [(bi/devtool-connected {:connected? open?})]))))
             client))
         (catch :default e
           (log/error e)))

@@ -40,16 +40,16 @@
   {:transmit! (fn transmit! [_ {::txn/keys [ast result-handler]}]
                 (let [edn           (eql/ast->query ast)
                       ok-handler    (fn [result]
-                                      (enc/try*
+                                      (try
                                         (result-handler (select-keys result #{:transaction :status-code :body :status-text}))
-                                        (catch :any e
+                                        (catch #?(:cljs :default :clj Throwable) e
                                           (log/error e "Result handler failed with an exception. See https://book.fulcrologic.com/#err-msr-res-handler-exc"))))
                       error-handler (fn [error-result]
-                                      (enc/try*
+                                      (try
                                         (result-handler (merge {:status-code 500} (select-keys error-result #{:transaction :status-code :body :status-text})))
-                                        (catch :any e
+                                        (catch #?(:cljs :default :clj Throwable) e
                                           (log/error e "Error handler failed with an exception. See https://book.fulcrologic.com/#err-msr-err-handler-exc"))))]
-                  (enc/try*
+                  (try
                     (async/go
                       (let [target-id (eql-target-id edn)
                             result    (when target-id (async/<! (dp/transmit! devtool-connection target-id edn)))]
@@ -57,6 +57,6 @@
                           (nil? target-id) (error-handler {:transaction edn :status-code 500 :status-text "No target id"})
                           (mk/error result) (error-handler {:transaction edn :status-code 500 :status-text (mk/error result)})
                           :else (ok-handler {:transaction edn :status-code 200 :body (mk/response result)}))))
-                    (catch :any _
+                    (catch #?(:cljs :default :clj Throwable) _
                       (error-handler {:transaction edn :status-code 500})))))
    :abort!    (fn abort! [this id])})

@@ -6,7 +6,7 @@
  :builds   {:demo                  {:target     :browser
                                     :output-dir "resources/public/js/demo"
                                     :asset-path "/js/demo"
-                                    :devtools   {:preloads           [com.fulcrologic.devtools.chrome-preload]
+                                    :devtools   {:preloads           [com.fulcrologic.devtools.electron-preload]
                                                  :after-load         target-app.main/refresh
                                                  :http-root          "resources/public"
                                                  :http-port          8080
@@ -28,10 +28,10 @@
                                     :asset-path       "js/content-script"
                                     :compiler-options {:closure-output-charset "US-ASCII"
                                                        :optimizations          :simple
-                                                       :external-config        {:guardrails {:throw?                 false
-                                                                                             :guardrails/compact?    true
-                                                                                             :guardrails/stack-trace :none
-                                                                                             :guardrails/trace?      true}}}
+                                                       #_#_:external-config {:guardrails {:throw?                 false
+                                                                                          :guardrails/compact?    true
+                                                                                          :guardrails/stack-trace :none
+                                                                                          :guardrails/trace?      true}}}
                                     :modules          {:main {:entries [com.fulcrologic.devtools.chrome.content-script]}}}
             :chrome-devtool        {:target     :esm
                                     :runtime    :custom
@@ -60,17 +60,17 @@
                                                        :http-resource-root "public"
                                                        :http-root          "resources/public/js/test"}}
 
-            :electron-main         {:target     :npm-module
-                                    :runtime    :node
-                                    :dev        {:compiler-options {:external-config {:guardrails {:throw?                 false
-                                                                                                   :guardrails/compact?    true
-                                                                                                   :guardrails/stack-trace :none
-                                                                                                   :guardrails/trace?      true}}}}
-                                    :entries    [devtool.electron.app
-                                                 ;; This preload makes the API available for comms from dev tool to background worker
-                                                 ;; WILL NOT work without it. Your app also has to call init on it via a preload in js. See demo.
-                                                 com.fulcrologic.devtools.electron.api.preload]
-                                    :output-dir "shells/electron/app/js"}
+            :electron-main         {:target           :npm-module
+                                    :runtime          :node
+                                    :compiler-options {:external-config {:guardrails {:throw?                 false
+                                                                                      :guardrails/compact?    true
+                                                                                      :guardrails/stack-trace :none
+                                                                                      :guardrails/trace?      true}}}
+                                    :entries          [devtool.electron.app
+                                                       ;; This preload makes the API available for comms from dev tool to background worker
+                                                       ;; WILL NOT work without it. Your app also has to call init on it via a preload in js. See demo.
+                                                       com.fulcrologic.devtools.electron.api.preload]
+                                    :output-dir       "shells/electron/app/js"}
 
             :electron-renderer     {:target     :browser
                                     :modules    {:app {:init-fn devtool.electron.renderer/start}}

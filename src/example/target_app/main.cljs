@@ -1,6 +1,5 @@
 (ns target-app.main
   (:require
-    [com.fulcrologic.devtools.common.message-keys :as mk]
     [com.fulcrologic.devtools.common.target :as dt]
     [com.fulcrologic.devtools.devtool-io :as dev]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
@@ -54,12 +53,12 @@
 
 (defn refresh []
   (app/mount! app1 Root "app1")
-  (app/mount! app2 Root "app2"))
+  #_(app/mount! app2 Root "app2"))
 
 (defn start []
   (refresh)
   (dt/ido
     (dt/add-devtool-remote! app1 "App 1")
-    (dt/add-devtool-remote! app2 "App 2")))
+    #_(dt/add-devtool-remote! app2 "App 2")))
 
 (start)

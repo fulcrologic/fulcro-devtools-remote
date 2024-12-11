@@ -31,11 +31,8 @@
   "Push a message from your application to the dev tool it is connected to."
   [data]
   [::schema/devtool-message => :nil]
-  (enc/try*
-    (let [data (utils/strip-lambdas data)]
-      (post-window-message! (js {constants/target->content-script-key (encode/write data)})))
-    (catch :any e
-      (log/error e "Cannot send devtool message."))))
+  (let [data (utils/strip-lambdas data)]
+    (post-window-message! (js {constants/target->content-script-key (encode/write data)}))))
 
 (>defn event-data
   "Decode a js event"
