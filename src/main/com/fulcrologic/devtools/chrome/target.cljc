@@ -65,7 +65,7 @@
                                              :send-ch send-ch))
           conn      (cc/->Connection vconfig)]
       (async/go-loop []
-        (let [msg (async/<! send-ch)]
+        (let [msg (log/spy :info "send message" (async/<! send-ch))]
           (push! msg))
         (recur))
       (listen-for-content-script-messages! conn)
