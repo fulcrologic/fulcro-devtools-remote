@@ -87,7 +87,7 @@
   [async-processor]
   (let [port-name (str constants/devtool-port-name ":" current-tab-id)
         port      (runtime-connect! port-name)
-        send-ch (async/dropping-buffer 10000)
+        send-ch   (async/chan (async/dropping-buffer 10000))
         conn      (ct/->Connection port (volatile! {:connected?      false
                                                                 :send-ch send-ch
                                                                 :async-processor async-processor

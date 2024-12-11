@@ -1,6 +1,6 @@
 (ns com.fulcrologic.devtools.electron.target
   (:require
-    [cljs.core.async :as async :refer [<! >!] :refer-macros [go go-loop]]
+    [clojure.core.async :as async]
     [com.fulcrologic.devtools.common.message-keys :as mk]
     [com.fulcrologic.devtools.common.protocols :as dp]
     [com.fulcrologic.devtools.common.connection :as cc]
@@ -53,27 +53,27 @@
         (catch :default e
           (log/error e)))
       (log/info "Starting websockets at:" SERVER_HOST ":" SERVER_PORT)
-      (go-loop [attempt 1]
+      (async/go-loop [attempt 1]
         (let [client (get @vconfig :sente-socket-client)]
           (if-not client
             (log/info "Shutting down inspect ws async loops.")
             (let [{:keys [state send-fn]} client
                   open? (:open? @state)]
               (if open?
-                (when-let [data (<! send-ch)]
+                (when-let [data (async/<! send-ch)]
                   (send-fn [:fulcrologic.devtool/event data]))
                 (do
                   (log/trace (str "Waiting for channel to be ready"))
                   (async/<! (async/timeout (backoff-ms attempt)))))
               (recur (if open? 1 (inc attempt)))))))
-      (go-loop [attempt 1]
+      (async/go-loop [attempt 1]
         (let [client (get @vconfig :sente-socket-client)]
           (if-not client
             (log/info "Shutting down inspect ws async loops.")
             (let [{:keys [state ch-recv]} client
                   open? (:open? @state)]
               (if open?
-                (let [[event-type message] (:event (<! ch-recv))]
+                (let [[event-type message] (:event (async/<! ch-recv))]
                   (when (= :fulcrologic.devtool/event event-type)
                     (cc/handle-devtool-message conn message)))
                 (do
@@ -86,7 +86,7 @@
   (-connect! [this {:keys [target-id] :as config}]
     (let [target-id (or target-id (random-uuid))
           vconfig   (volatile! (assoc config
-                                 :send-ch (async/dropping-buffer 10000)
+                                 :send-ch (async/chan (async/dropping-buffer 10000))
                                  :active-requests {}
                                  :target-id target-id))
           conn      (cc/->Connection vconfig)]

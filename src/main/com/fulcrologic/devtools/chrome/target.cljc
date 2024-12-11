@@ -60,7 +60,7 @@
   dp/DevToolConnectionFactory
   (-connect! [this {:keys [target-id] :as config}]
     (let [target-id (or target-id (random-uuid))
-          send-ch   (async/dropping-buffer 10000)
+          send-ch   (async/chan (async/dropping-buffer 10000))
           vconfig   (volatile! (assoc config :target-id target-id
                                              :send-ch send-ch))
           conn      (cc/->Connection vconfig)]

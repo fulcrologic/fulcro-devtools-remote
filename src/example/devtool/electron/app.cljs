@@ -1,6 +1,6 @@
 (ns devtool.electron.app
   (:require
-    [cljs.core.async :as async]
+    [cljs.core.async :as async :refer [<! >!] :refer-macros [go go-loop]]
     ["electron" :as electron]
     ["path" :as path]
     ["electron-settings" :as settings]
@@ -15,7 +15,7 @@
     (-> (.get settings k)
       (.then
         (fn [v]
-          (async/go (async/>! c (if (nil? v) default v))))))
+          (async/go (>! c (if (nil? v) default v))))))
     c))
 (defn set-setting! [k v] (.set settings k v))
 
@@ -28,18 +28,18 @@
     {mk/request '[(devtool/toggle-settings {})]}))
 
 (defn create-window []
-  (async/go
-    (let [width   (async/<! (get-setting "BrowserWindow/width" 800))
-          height  (async/<! (get-setting "BrowserWindow/height" 600))
-          x       (async/<! (get-setting "BrowserWindow/x" 0))
-          y       (async/<! (get-setting "BrowserWindow/y" 0))
+  (go
+    (let [width   (<! (get-setting "BrowserWindow/width" 800))
+          height  (<! (get-setting "BrowserWindow/height" 600))
+          x       (<! (get-setting "BrowserWindow/x" 0))
+          y       (<! (get-setting "BrowserWindow/y" 0))
           ^js win (electron/BrowserWindow.
-                    #js {:width          width
-                         :height         height
-                         :x              x
-                         :y              y
-                         :webPreferences #js {:nodeIntegration true
-                                              :preload          (path/join js/__dirname ".." "preload.js")}})]
+                    (clj->js {:width          width
+                              :height         height
+                              :x              x
+                              :y              y
+                              :webPreferences #js {:nodeIntegration true
+                                                   :preload         (path/join js/__dirname ".." "preload.js")}}))]
       (.loadFile win (path/join js/__dirname ".." "public" "index.html"))
       (let [save-window-state! (g.fns/debounce #(save-state! win) 500)]
         (doto win

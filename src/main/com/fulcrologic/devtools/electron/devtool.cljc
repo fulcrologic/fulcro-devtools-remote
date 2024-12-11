@@ -4,7 +4,6 @@
     [com.fulcrologic.devtools.common.connection :as cc]
     [com.fulcrologic.devtools.common.devtool-default-mutations]
     [com.fulcrologic.devtools.common.fulcro-devtool-remote :as fdr]
-    [com.fulcrologic.devtools.common.protocols :as dp]
     [com.fulcrologic.devtools.common.resolvers :as resolvers]
     [com.fulcrologic.devtools.common.schemas]
     [com.fulcrologic.devtools.common.transit :as encode]
@@ -14,10 +13,9 @@
 
 (>defn post-message! [msg]
   [:transit/encoded-string => :any]
-  (js/window.electronAPI.send msg))
+  #?(:cljs (js/window.electronAPI.send msg)))
 
-(>defn service-worker-message-handler [^clj conn msg]
-  [::dp/DevToolConnection :string => :any]
+(defn service-worker-message-handler [^clj conn _evt msg]
   (let [decoded-message (enc/catching (encode/read msg))]
     (cc/handle-devtool-message conn decoded-message)))
 
@@ -25,7 +23,7 @@
 
 (defn new-electron-ui-connection
   [async-processor]
-  (let [send-ch (async/dropping-buffer 10000)
+  (let [send-ch (async/chan (async/dropping-buffer 10000))
         conn    (cc/->Connection (volatile! {:connected?      false
                                              :async-processor async-processor
                                              :active-requests {}

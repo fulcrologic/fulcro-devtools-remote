@@ -49,13 +49,14 @@
   [::dp/DevToolConnection ::schema/devtool-message => :any]
   (let [{my-uuid :target-id
          :keys   [async-processor active-requests]} (connection-config conn)
-        connected? (mk/connected? message)
-        target-id  (mk/target-id message)]
+        connected? (log/spy :info (mk/connected? message))
+        target-id  (log/spy :info (mk/target-id message))]
     (if (some? connected?)
       (async-processor [(bi/devtool-connected {:connected? connected?})])
-      (when (= my-uuid target-id)
-        (let [EQL        (mk/request message)
-              request-id (mk/request-id message)]
+      ;; TASK: need to distinguish between server and client on my uuid...I think this is right?
+      (when (or (nil? my-uuid) (= my-uuid target-id))
+        (let [EQL        (log/spy :info (mk/request message))
+              request-id (log/spy :info (mk/request-id message))]
           (cond
             (contains? active-requests request-id) (handle-response conn message)
             (and EQL request-id) (handle-devtool-request conn message)
@@ -66,7 +67,8 @@
   (-transmit! [this target-id EQL]
     (let [response-channel (async/chan)
           request-id       (random-uuid)
-          {:keys [target-id send-ch]} (connection-config this)]
+          {:keys [target-id send-ch]
+           :or   {target-id target-id}} (connection-config this)]
       (vswap! vconfig update :active-requests assoc request-id response-channel)
       (async/go
         (async/>! send-ch {mk/request    EQL
