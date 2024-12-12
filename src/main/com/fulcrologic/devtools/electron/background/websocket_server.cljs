@@ -12,10 +12,9 @@
     [com.fulcrologic.devtools.common.message-keys :as mk]
     [goog.object :as gobj]
     [taoensso.encore :as enc]
-    [taoensso.sente.server-adapters.express :as sente-express]
+    [taoensso.sente.server-adapters.community.express :as sente-express]
     [taoensso.timbre :as log]))
 
-(log/set-level! :trace)
 (defonce channel-socket-server (atom nil))
 (defonce target-id->client-id (atom {}))
 (defonce content-atom (atom nil))

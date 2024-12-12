@@ -47,10 +47,9 @@
                                        socket-client-opts))]
             (add-watch (:state client) ::open-watch
               (fn [_ _ {was-open? :open?} {:keys [open?]}]
-                (when open?
-                  ((:send-fn client) [:fulcrologic.devtool/event {mk/connected? open?
-                                                                  mk/target-id  target-id}]))
                 (when (not= was-open? open?)
+                  ((:send-fn client) [:fulcrologic.devtool/event {mk/connected? open?
+                                                                  mk/target-id  target-id}])
                   (async-processor [(bi/devtool-connected {:connected? open?})]))))
             client))
         (catch :default e

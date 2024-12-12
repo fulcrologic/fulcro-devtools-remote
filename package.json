@@ -15,8 +15,8 @@
 
     "cors": "^2.8.5",
     "electron-settings": "^4.0.4",
-    "express": "^4.21.1",
-    "express-ws": "^4.0.0",
+    "express": "4.21.2",
+    "express-ws": "5.0.2",
     "electron": "^32.2.5"
   },
   "repository": {
