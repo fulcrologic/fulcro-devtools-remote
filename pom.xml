@@ -13,6 +13,17 @@
       <url>https://clojars.org/repo</url>
     </repository>
   </distributionManagement>
+  <licenses>
+    <license>
+      <name>MIT</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
+  <scm>
+    <url>https://github.com/fulcrologic/fulcro-devtools-remote</url>
+    <connection>scm:git:git://github.com/fulcrologic/fulcro-devtools-remote.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/fulcrologic/fulcro-devtools-remote.git</developerConnection>
+  </scm>
   <dependencies>
     <dependency>
       <groupId>org.clojure</groupId>
