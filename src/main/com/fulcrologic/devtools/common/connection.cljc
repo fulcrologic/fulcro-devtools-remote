@@ -20,29 +20,30 @@
 (>defn handle-response [^Object conn {::mk/keys [request-id response] :as message}]
   [::dp/DevToolConnection [:or ::schema/devtool-error ::schema/devtool-response] => :any]
   (let [{:keys [active-requests]} (connection-config conn)
-        chan (get active-requests request-id)]
+        chan (log/spy :info (get active-requests (log/spy :info request-id)))]
     (when chan
       (try
         (vswap! (.-vconfig conn) update :active-requests dissoc request-id)
         (async/go
-          (async/>! chan (or response (select-keys message [mk/error]))))
-        (finally
-          (async/close! chan))))))
+          (async/>! chan (or message (select-keys message [mk/error]))))
+        (catch #?(:clj Throwable :cljs :default) e
+          (log/error e "Unable to handle response"))))))
 
 (>defn handle-devtool-request [conn {::mk/keys [target-id request-id request]}]
   [::dp/DevToolConnection ::schema/devtool-request => :any]
   (let [{:keys [async-processor send-ch]} (connection-config conn)]
+    (log/info "Handling remote request using" send-ch)
     (async/go
       (try
         (let [result (async/<! (async-processor request))]
-          (async/>! send-ch {mk/request-id request-id
-                             mk/target-id  target-id
-                             mk/response   result}))
+          (async/>! send-ch (log/spy :info {mk/request-id request-id
+                                            mk/target-id  target-id
+                                            mk/response   result})))
         (catch :default e
           (log/error e "Devtool client side processor failed.")
-          (async/>! send-ch {mk/request-id request-id
-                             mk/target-id  target-id
-                             mk/error      (ex-message e)}))))))
+          (async/>! send-ch (log/spy :info {mk/request-id request-id
+                                            mk/target-id  target-id
+                                            mk/error      (ex-message e)})))))))
 
 (defn- handle-devtool-message [^:clj conn message]
   [::dp/DevToolConnection ::schema/devtool-message => :any]
@@ -59,7 +60,7 @@
         (let [EQL        (log/spy :info (mk/request message))
               request-id (log/spy :info (mk/request-id message))]
           (cond
-            (contains? active-requests request-id) (handle-response conn message)
+            (log/spy :info (contains? active-requests request-id)) (handle-response conn message)
             (and EQL request-id) (handle-devtool-request conn message)
             :else (log/error message)))))))
 
@@ -77,6 +78,7 @@
                            mk/request-id request-id})
         (let [timeout (async/timeout 10000)
               [r channel] (async/alts! [response-channel timeout] :priority true)]
+          (log/spy :info "Connection Response received " r)
           (if (= channel timeout)
             (do
               (log/error "Request to devtool timed out" EQL)

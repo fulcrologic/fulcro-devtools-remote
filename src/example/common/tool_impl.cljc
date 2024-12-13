@@ -9,5 +9,6 @@
   {::pc/sym `common.tool-api/counter-added}
   (df/load! app :counter/stats nil {:params {mk/target-id id}
                                     :remote :devtool-remote
-                                    :target [:tool/id id :tool/counter-stats]}))
+                                    :target [:tool/id id :tool/counter-stats]})
+  nil)
 

@@ -38,7 +38,7 @@
    Requests have a timeout of 10 seconds."
   [devtool-connection]
   {:transmit! (fn transmit! [_ {::txn/keys [ast result-handler]}]
-                (let [edn           (eql/ast->query ast)
+                (let [edn           (log/spy :info (eql/ast->query ast))
                       ok-handler    (fn [result]
                                       (try
                                         (result-handler (select-keys result #{:transaction :status-code :body :status-text}))

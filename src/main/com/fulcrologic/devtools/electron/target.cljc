@@ -61,11 +61,11 @@
             (log/info "Shutting down inspect ws async loops.")
             (let [{:keys [state send-fn]} client
                   open? (:open? @state)]
-              (if open?
-                (when-let [data (async/<! send-ch)]
+              (if (log/spy :info open?)
+                (when-let [data (log/spy :info "client send-ch" (async/<! send-ch))]
                   (send-fn [:fulcrologic.devtool/event data]))
                 (do
-                  (log/trace (str "Waiting for channel to be ready"))
+                  (log/warn (str "Waiting for channel to be ready"))
                   (async/<! (async/timeout (backoff-ms attempt)))))
               (recur (if open? 1 (inc attempt)))))))
       (async/go-loop [attempt 1]
@@ -75,7 +75,7 @@
             (let [{:keys [state ch-recv]} client
                   open? (:open? @state)]
               (if open?
-                (let [[event-type message] (:event (async/<! ch-recv))]
+                (let [[event-type message] (log/spy :info (:event (async/<! ch-recv)))]
                   (when (= :fulcrologic.devtool/event event-type)
                     (cc/handle-devtool-message conn message)))
                 (do

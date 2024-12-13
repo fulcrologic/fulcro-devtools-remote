@@ -81,8 +81,12 @@
 
 (defn send-to-devtool! [msg]
   (try
+    (log/spy :info "Send to devtool:" msg)
     (if @content-atom
-      (.send @content-atom "devtool" (encode/write msg))
+      (try
+        (.send @content-atom "devtool" (encode/write msg))
+        (catch :default e
+          (log/error e "Send failed")))
       (log/warn "Message ignored. Content atom not ready."))
     (catch :default e
       (log/error e))))
@@ -93,7 +97,7 @@
       (sente-express/make-express-channel-socket-server!
         {:packer        (tp/make-packer {})
          :csrf-token-fn nil
-         :user-id-fn :client-id})))
+         :user-id-fn    :client-id})))
   (go-loop []
     (when-some [{:keys [client-id event]} (<! (:ch-recv @channel-socket-server))]
       (let [[event-type event-data] event]

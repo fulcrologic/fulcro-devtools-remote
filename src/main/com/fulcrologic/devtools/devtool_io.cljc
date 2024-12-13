@@ -3,7 +3,8 @@
     [com.fulcrologic.devtools.common.message-keys :as mk]
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.data-fetch :as df]
-    [edn-query-language.core :as eql]))
+    [edn-query-language.core :as eql]
+    [taoensso.timbre :as log]))
 
 (defn transact! [app-ish target-id txn]
   (let [ast (eql/query->ast txn)
@@ -20,7 +21,7 @@
   ([app-ish target-id root-key component]
    (load! app-ish target-id root-key component {}))
   ([app-ish target-id root-key component options]
-   (let [options (assoc options
-                   mk/target-id target-id
-                   :remote :devtool-remote)]
-     (df/load! app-ish root-key component options))))
+   (let [options (-> options
+                   (update :params assoc mk/target-id target-id)
+                   (assoc :remote :devtool-remote))]
+     (df/load! app-ish root-key component (log/spy :info options)))))

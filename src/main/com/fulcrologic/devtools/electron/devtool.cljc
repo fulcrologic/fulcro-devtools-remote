@@ -31,8 +31,8 @@
                                              :active-requests {}
                                              :send-ch         send-ch}))]
     (async/go-loop []
-      (let [v (async/<! send-ch)]
-        (post-message! (encode/write v)))
+      (let [v (log/spy :info "Send requested" (async/<! send-ch))]
+        (post-message! (log/spy :info "Posting" (encode/write v))))
       (recur))
     (add-message-listener! (partial service-worker-message-handler conn))
     conn))
