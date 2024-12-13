@@ -6,7 +6,7 @@
  :builds   {:demo                  {:target     :browser
                                     :output-dir "resources/public/js/demo"
                                     :asset-path "/js/demo"
-                                    :devtools   {:preloads           [com.fulcrologic.devtools.chrome-preload]
+                                    :devtools   {:preloads           [com.fulcrologic.devtools.electron-preload]
                                                  :after-load         target-app.main/refresh
                                                  :http-root          "resources/public"
                                                  :http-port          8080

@@ -31,7 +31,6 @@
   (let [vconfig (.-vconfig conn)
         {:keys [target-id sente-socket-client async-processor send-ch]} (cc/connection-config conn)]
     (when-not sente-socket-client
-      (log/info "Connecting to websockets")
       (try
         (vswap! (.-vconfig conn) assoc :sente-socket-client
           (let [socket-client-opts {:type           :auto
@@ -61,8 +60,8 @@
             (log/info "Shutting down inspect ws async loops.")
             (let [{:keys [state send-fn]} client
                   open? (:open? @state)]
-              (if (log/spy :info open?)
-                (when-let [data (log/spy :info "client send-ch" (async/<! send-ch))]
+              (if open?
+                (when-let [data (async/<! send-ch)]
                   (send-fn [:fulcrologic.devtool/event data]))
                 (do
                   (log/warn (str "Waiting for channel to be ready"))
@@ -75,7 +74,7 @@
             (let [{:keys [state ch-recv]} client
                   open? (:open? @state)]
               (if open?
-                (let [[event-type message] (log/spy :info (:event (async/<! ch-recv)))]
+                (let [[event-type message] (:event (async/<! ch-recv))]
                   (when (= :fulcrologic.devtool/event event-type)
                     (cc/handle-devtool-message conn message)))
                 (do

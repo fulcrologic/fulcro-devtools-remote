@@ -14,12 +14,10 @@
 
 (>defn post-message! [msg]
   [:transit/encoded-string => :any]
-  (log/info "TRYING post message (should see a send)")
   #?(:cljs (js/window.electronAPI.send msg)))
 
 (defn service-worker-message-handler [^clj conn _evt msg]
   (let [decoded-message (enc/catching (encode/read msg))]
-    (log/spy :info decoded-message)
     (cc/handle-devtool-message conn decoded-message)))
 
 (defn add-message-listener! [listener] (js/window.electronAPI.listen listener))
@@ -31,8 +29,8 @@
                                              :active-requests {}
                                              :send-ch         send-ch}))]
     (async/go-loop []
-      (let [v (log/spy :info "Send requested" (async/<! send-ch))]
-        (post-message! (log/spy :info "Posting" (encode/write v))))
+      (let [v (async/<! send-ch)]
+        (post-message! (encode/write v)))
       (recur))
     (add-message-listener! (partial service-worker-message-handler conn))
     conn))

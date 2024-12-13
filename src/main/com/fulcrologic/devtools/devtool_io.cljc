@@ -24,4 +24,4 @@
    (let [options (-> options
                    (update :params assoc mk/target-id target-id)
                    (assoc :remote :devtool-remote))]
-     (df/load! app-ish root-key component (log/spy :info options)))))
+     (df/load! app-ish root-key component options))))

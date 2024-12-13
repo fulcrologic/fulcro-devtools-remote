@@ -6,6 +6,7 @@
     [cljs.core.async :as async :refer [<! >! put! take!] :refer-macros [go go-loop]]
     [cljs.nodejs :as nodejs]
     [cognitect.transit :as transit]
+    [com.fulcrologic.devtools.common.built-in-mutations :as bi]
     [com.fulcrologic.devtools.electron.background.agpatch]  ; patches goog global for node
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.devtools.common.transit-packer :as tp]
@@ -81,7 +82,6 @@
 
 (defn send-to-devtool! [msg]
   (try
-    (log/spy :info "Send to devtool:" msg)
     (if @content-atom
       (try
         (.send @content-atom "devtool" (encode/write msg))
@@ -90,6 +90,13 @@
       (log/warn "Message ignored. Content atom not ready."))
     (catch :default e
       (log/error e))))
+
+(defn send-to-target! [{::mk/keys [target-id] :as msg}]
+  (if-not target-id
+    (log/warn "Unable to find app-uuid in message:" msg)
+    (let [{:keys [send-fn]} @channel-socket-server
+          client-id (get @target-id->client-id target-id)]
+      (send-fn client-id [:fulcrologic.devtool/event msg]))))
 
 (defn start-ws! []
   (when-not @channel-socket-server
@@ -101,8 +108,6 @@
   (go-loop []
     (when-some [{:keys [client-id event]} (<! (:ch-recv @channel-socket-server))]
       (let [[event-type event-data] event]
-        (log/debug "Server received:" event-type)
-        (log/debug "-> with event data:" event-data)
         (case event-type
           :fulcrologic.devtool/event
           (let [target-id (mk/target-id event-data)]
@@ -113,11 +118,12 @@
           (do
             (log/debug "lost connection" client-id)
             ;; TASK: Clear target
+            (send-to-devtool! {mk/request [(bi/ {})]})
             (swap! target-id->client-id (fn [m] (enc/remove-vals (fn [v] (= v client-id)) m))))
-          :chsk/uidport-open
-          (log/debug "opened connection" client-id)
-          :chsk/ws-ping
-          (log/debug "ws-ping from client:" client-id)
+          (:chsk/uidport-open
+            :chsk/ws-pong
+            :chsk/ws-ping)
+          (log/trace "ignored msg:" client-id)
           #_else
           (log/warn "Unsupported event:" event "from client:" client-id))))
     (recur))
@@ -135,23 +141,14 @@
   (reset! server-atom nil)
   (start-ws!))
 
-(defn send-to-target! [{::mk/keys [target-id] :as msg}]
-  (if-not target-id
-    (log/warn "Unable to find app-uuid in message:" msg)
-    (let [{:keys [send-fn]} @channel-socket-server
-          client-id (get @target-id->client-id (log/spy :info target-id))]
-      (send-fn (log/spy :info client-id) [:fulcrologic.devtool/event msg]))))
-
 (defn start!
   "Call for overall devtool startup (once)"
   [^js web-content]
-  (log/info "Setting web content to" web-content)
   (reset! content-atom web-content)
   (start-ws!)
-  (.on web-content "dom-ready" (fn on-inspect-reload-request-app-state [] (log/info "DOM READY")))
+  ;(.on web-content "dom-ready" (fn on-inspect-reload-request-app-state [] (log/info "DOM READY")))
   ;; LANDMARK: Hook up of incoming messages from dev tool
   (e/ipcMain.on "send"
     (fn handle-devtool-message [_ message]
-      (log/info "Server received message from renderer" message)
       (let [msg (encode/read message)]
         (send-to-target! msg)))))

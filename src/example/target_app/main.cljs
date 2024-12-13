@@ -53,12 +53,12 @@
 
 (defn refresh []
   (app/mount! app1 Root "app1")
-  #_(app/mount! app2 Root "app2"))
+  (app/mount! app2 Root "app2"))
 
 (defn start []
   (refresh)
   (dt/ido
     (dt/add-devtool-remote! app1 "App 1")
-    #_(dt/add-devtool-remote! app2 "App 2")))
+    (dt/add-devtool-remote! app2 "App 2")))
 
 (start)
