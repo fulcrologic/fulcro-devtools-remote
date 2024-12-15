@@ -2,16 +2,12 @@
   (:require
     ["electron" :as e :refer [ipcMain]]
     ["electron-settings" :as settings]
-    [cljs.pprint :refer [pprint]]
     [cljs.core.async :as async :refer [<! >! put! take!] :refer-macros [go go-loop]]
     [cljs.nodejs :as nodejs]
-    [cognitect.transit :as transit]
-    [com.fulcrologic.devtools.common.built-in-mutations :as bi]
-    [com.fulcrologic.devtools.electron.background.agpatch]  ; patches goog global for node
+    [com.fulcrologic.devtools.common.message-keys :as mk]  ; patches goog global for node
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.devtools.common.transit-packer :as tp]
-    [com.fulcrologic.devtools.common.message-keys :as mk]
-    [goog.object :as gobj]
+    [com.fulcrologic.devtools.electron.background.agpatch]
     [taoensso.encore :as enc]
     [taoensso.sente.server-adapters.community.express :as sente-express]
     [taoensso.timbre :as log]))
@@ -21,11 +17,6 @@
 (defonce content-atom (atom nil))
 (defonce server-atom (atom nil))
 (def vwebsocket-port (volatile! 8237))
-
-(comment
-  (:connected-uids @channel-socket-server)
-  ((:send-fn @channel-socket-server) "61ddf74d-9336-491c-aec6-4e056f10b38f" [:fulcrologic.devtool/event {:x 1}])
-  )
 
 (defn websocket-port [] @vwebsocket-port)
 (defn set-websocket-port! [port] (vreset! vwebsocket-port port))
@@ -118,7 +109,7 @@
           (do
             (log/debug "lost connection" client-id)
             ;; TASK: Clear target
-            (send-to-devtool! {mk/request [(bi/ {})]})
+            ;(send-to-devtool! {mk/request [(bi/ {})]})
             (swap! target-id->client-id (fn [m] (enc/remove-vals (fn [v] (= v client-id)) m))))
           (:chsk/uidport-open
             :chsk/ws-pong

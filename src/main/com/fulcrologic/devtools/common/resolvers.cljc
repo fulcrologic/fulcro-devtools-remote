@@ -11,6 +11,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.fulcro.algorithms.do-not-use :as futil]
     [com.fulcrologic.fulcro.mutations :as m]
+    [edn-query-language.core :as eql]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]))
 
@@ -80,12 +81,28 @@
   [& args]
   (defpathom-backend-endpoint* `pc/defresolver args false))
 
+(def query-params-to-env-plugin
+  "Adds top-level load params to env, so nested parsing layers can see them."
+  {::p/wrap-parser
+   (fn [parser]
+     (fn [env tx]
+       (let [children     (-> tx eql/query->ast :children)
+             query-params (reduce
+                            (fn [qps {:keys [type params] :as x}]
+                              (cond-> qps
+                                (and (not= :call type) (seq params)) (merge params)))
+                            {}
+                            children)
+             env          (assoc env :query-params query-params)]
+         (parser env tx))))})
+
 (defn build-parser []
   (p/async-parser {::p/mutate  pc/mutate-async
                    ::p/env     {::p/reader [p/map-reader
                                             pc/async-reader2
                                             pc/open-ident-reader]}
                    ::p/plugins [(pc/connect-plugin {::pc/register (vals @pathom-registry)})
+                                query-params-to-env-plugin
                                 p/error-handler-plugin]}))
 
 (let [static-parser (build-parser)]
@@ -105,4 +122,3 @@
                           syms)]
        `(do
           ~@declarations))))
-
