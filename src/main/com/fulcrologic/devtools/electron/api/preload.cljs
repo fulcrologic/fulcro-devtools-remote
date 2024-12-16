@@ -7,6 +7,4 @@
   (e/contextBridge.exposeInMainWorld
     "electronAPI"
     #js {:listen (fn [f] (e/ipcRenderer.on "devtool" f))
-         :send (fn [msg]
-                 (log/info "Sending message back to background task" msg)
-                 (e/ipcRenderer.send "send" msg))}))
+         :send   (fn [msg] (e/ipcRenderer.send "send" msg))}))
