@@ -11,7 +11,6 @@
     [com.fulcrologic.fulcro.application]
     [com.fulcrologic.guardrails.malli.core :refer [=> >defn ?]]
     [edn-query-language.core :as eql]
-    [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
 (>defn eql-target-id
