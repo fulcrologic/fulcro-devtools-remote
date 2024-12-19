@@ -28,9 +28,8 @@
     [com.fulcrologic.guardrails.malli.core :refer [>defn => ?]]
     [taoensso.timbre :as log]))
 
-(def INSPECT
-  #?(:clj  (System/getProperty "com.fulcrologic.devtools.enabled")
-     :cljs (goog-define INSPECT false)))
+#?(:clj  (def INSPECT (System/getProperty "com.fulcrologic.devtools.enabled"))
+   :cljs (goog-define INSPECT false))
 
 (def DEBUG #?(:cljs goog.DEBUG :clj (or
                                       (System/getProperty "test")
