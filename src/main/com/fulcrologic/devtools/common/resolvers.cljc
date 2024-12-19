@@ -105,13 +105,10 @@
                                 query-params-to-env-plugin
                                 p/error-handler-plugin]}))
 
-(let [static-parser (build-parser)]
-  (defn process-async-request
-    "Used in the handling of requests from the 'other side' of the connection."
-    [env EQL]
-    (if #?(:clj true :cljs goog.DEBUG)
-      ((build-parser) env EQL)
-      (static-parser env EQL))))
+(defn process-async-request
+  "Used in the handling of requests from the 'other side' of the connection."
+  [env EQL]
+  ((build-parser) env EQL))
 
 #?(:clj
    (defmacro remote-mutations [& syms]
