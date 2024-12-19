@@ -77,6 +77,224 @@ Background <-> This Library: websockets
 This Library <-> Target Code
 -----
 
+== Usage
+
+Once you understand the basic intentions above, it is easier to explain the operation. The following terms are used in the library:
+
+Target::
+The application that your dev tool is talking to (targeting).
+Tool::
+The application you write (typically in Fulcro, but that is not required) that is the actual tool.
+
+IMPORTANT: In the code examples you will see `ilet` and `ido`. These macros are exactly like `let` and `do`, but the emit NO code if you set a compile-time flag. This lets remove your tooling from production builds. So, most of your logic and such for your tool will be enclosed in these. See their documentation for details.
+
+Communication is via https://github.com/edn-query-language/eql[EQL], and in general you will want to process that using https://github.com/wilkerlucio/pathom[Pathom]. Fulcro is the intended tooling platform, but that is also not a hard requirement (though you'll probably end up with Fulcro on your classpath either way).
+
+The library provides *bi-direction* communication between the tool and target, and the API looks the same *in both directions*.  The namespaces you require determine if you're implementing a target or a tool, and if you're planning to embed the tool as a Chrome Extension or via Electron.
+
+The public API is actually very small. There is a protocol which provides a *single* method:
+
+[source]
+-----
+(defprotocol DevToolConnection
+  (-transmit! [this target-id edn] "Private version. Use transmit!"))
+-----
+
+and a guardrails wrapper called `transmit!` is the preferred way to use it (though you can
+call the protocol directly if you want).
+
+The `transmit!` function sends the EQL (edn) across the connection to "the other side", which
+is context dependent. If you're in the tool code, you're talking *to* the target whose ID
+is `target-id`, but if you're in the target code, you're talking to the tool *as* `target-id`.
+The method returns a `core.async` channel whose value will be the return value of the EQL request (query or mutation result).
+
+So, *sending* requests looks like:
+
+[source]
+-----
+(async/go
+  (let [result (async/<! (protocols/transmit! conn the-target-id [{:query [:subquery]}]))]
+    ...))
+-----
+
+*Handling* requests requires that you provide a processor for EQL. This is true for tools and targets. Usually you define a pathom parser, and the `com.fulcrologic.devtools.common.resolvers` namespace gives you a pre-written setup for defining resolver and mutations from the "other side". Again, you use this *same* namespace on *both* sides, and the context is established by which code base you are in.
+
+Thus, when you *define* the resolvers and mutations, you follow the exact same steps. The difference will again be determined by tool/target context, which is established by what *other* namespaces you require and the factories you use to *build* the connection.
+
+[source]
+-----
+;; could be target or tool implementation, depending on *where* it is defined.
+(res/defresolver some-resolver [env params]
+  {::pc/output [{:stuff [:a]}]
+  {:stuff {:a 42}})
+-----
+
+=== Setting up a Tool
+
+See the `src/example` directory of this repository for a complete target, and tools implemented for both Electron and Chrome.
+
+You should copy the complete `shells` and `src/example` as a starter tooling, and just `src/example` to work on your target. You should also copy over the `shadow-cljs.edn` and `package.json` from the root of the project for the basic outline of how to compile things.
+
+Pay attention to the `package.json` in the root, and also in the shells, along with any manifest file. Study up on Chrome or Electron a little, but neither of these shells has anything you'd technically need to change to get things working for your own tool.
+
+==== Loading Chrome Tool
+
+First, do a RELEASE build from shadow-cljs UI on `chrome-background` and `chrome-content-script`. Those two are required in the `shells/chrome` directory, but don't include any user code, so you'd only need to rebuild those if this library has a bug/change.
+
+Then you can "Watch" your `chrome-devtool`. Hot code reload cannot work (security restriction) in Chrome, but you can "reload" your UI in the devtool tab with your browser's reload keyboard shortcut (or right mouse menu).
+
+Now go into `chrome://extensions` and enable developer mode, then use the Load Unpacked button to load `shells/chrome`.
+
+==== Running the Electron Tool
+
+Do a RELEASE build from shadow-cljs on the electron-main build, then WATCH the electron-renderer. In this case hot code reload DOES work, which makes electron a better and more convenient place to *work* on your tool.
+
+You'll need to do an `npm i` or `yarn` at the top level, and also in the shells/electron directory.
+
+Then:
+[source, bash]
+-----
+cd shells/electron
+electron .
+-----
+
+=== Setting up a Target
+
+Copy the `package.json`, `deps.edn`, `shadow-cljs.edn`, and `src/example` directory of this repository for a complete target. The example is written in Fulcro (not required). At the time of this writing this library is used (and was developed for) writing Fulcro Inspect, which is a tool for working on Fulcro apps; therefore if you write your example using Fulcro you will find there is an issue with using Inspect AND your own custom tool at the same time, because on Electron they'll fight over the (non-configurable) port. This is a known issue and has an easy fix...I just haven't gotten to it.
+
+The target selects websockets vs chrome based on requires. If you require the electron target ns, you're going to use websockets. If you require the chrome target, chrome. Simple as that. Typically you'll manage this with a preload so that you can enable/disable a mode for your tool by doing a shadow-cljs preload of one or the other of those namespaces.
+
+Those namespaces set up a factory for connections. DON'T INCLUDE BOTH. If you do, the last one to load will win.
+
+Your actual target code will require `c.f.d.common/target`, and use `connect!` or `add-devtool-remote!` from there. If the preload isn't present, then those calls will be no-ops and will return `nil`.
+
+==== Target APIs
+
+Your target needs to be able to *invoke* remote tool APIs, and it needs to provide (and respond to) its own operations. Your target main will typically require four namespaces:
+
+[source]
+-----
+    [com.fulcrologic.devtools.common.target :as dt]
+    [com.fulcrologic.devtools.devtool-io :as dev]
+    [common.target-impl] ; defined by you, implements your target dev code
+    [common.tool-api :as tapi] ; defined by you, DECLAREs your tool API
+-----
+
+on the target, you have to provide actual resolvers/mutations that you want the tool to be able to invoke.
+
+[souce]
+-----
+(ns common.target-impl
+  (:require
+    [com.fulcrologic.devtools.common.resolvers :as res]
+    [com.fulcrologic.devtools.common.target :refer [ido]]
+    [com.fulcrologic.fulcro.algorithms.normalize :as fnorm]
+    [com.fulcrologic.fulcro.application :as app]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.wsscode.pathom.connect :as pc]
+    [common.target-api :as api])) ; defined by you. DECLAREs your target API
+
+(ido
+  (res/defmutation restart [{:fulcro/keys [app]} input]
+    {::pc/sym `api/restart}
+    (let [Root          (comp/react-type (app/app-root app))
+          initial-state (comp/get-initial-state Root {})
+          state-atom    (::app/state-atom app)
+          pristine-db   (fnorm/tree->db Root initial-state true)]
+      (reset! state-atom pristine-db)
+      (app/force-root-render! app))
+    nil)
+
+  (res/defresolver counter-stats-resolver [{:fulcro/keys [app]} input]
+    {::pc/output [{:counter/stats [:stats/number-of-counters
+                                   :stats/sum-of-counters]}]}
+    (let [state-map (app/current-state app)
+          counters  (vals (:counter/id state-map))]
+      {:counter/stats
+       {:stats/number-of-counters (count counters)
+        :stats/sum-of-counters    (reduce + 0 (map :counter/n counters))}})))
+-----
+
+Note that there is *nothing* about this code that indicates a target or tool other than the fact than the symbols used in the mutations are namespaced using declarations from a `target-api` namespace.  The target api ns is *meant* to be shared by the tool and target, and declares the target API:
+
+[source]
+-----
+(ns common.target-api
+  (:require
+    [com.fulcrologic.devtools.common.target :refer [ido]]
+    [com.fulcrologic.devtools.common.resolvers :refer [remote-mutations]]))
+
+(ido
+  (remote-mutations restart))
+-----
+
+==== Tool APIs
+
+The setup for the tool requires you do the chrome vs. electron things (see the example `chrome-app` vs `electron.app`), but the usage of the connection looks nearly identical. You just flip the tool/target API implementation/declarations!
+
+Notice, in fact, that the *setup* of the devtool app is what's in the chrome vs electron files, and the UI (including the devtool usage) is the exact same for both (devtool.ui):
+
+[source]
+-----
+(ns devtool.ui
+  (:require
+    [clojure.edn :as edn]
+    [com.fulcrologic.devtools.common.devtool-default-mutations :refer [Target]]
+    [com.fulcrologic.devtools.common.message-keys :as mk]
+    [com.fulcrologic.devtools.devtool-io :as dev]
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.application :as app]
+    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.dom :as dom]
+    [com.fulcrologic.fulcro.dom.events :as evt]
+    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+    [common.target-api :as tapi] ; target API DECLARATIONS
+    [common.tool-impl] ; tool implementation
+    [taoensso.timbre :as log]))
+
+...
+-----
+
+=== Managing Lifecycle
+
+Chrome and Electron have different connection scenarios, so knowing *when* you should send messages is probably the most difficult part.
+
+==== Chrome
+
+In Chrome, you are either connected to a web page (and have access to all possible targets on the page at the same time), or you're not connected at all.
+
+When the connection is fully operational, BOTH sides (on open) of the connection will receive the built-in mutation:
+
+[source]
+-----
+
+(com.fulcrologic.devtools.common.built-in-mutations/devtool-connected {:connected?  open?})
+-----
+
+where `open?` indicates true on connect, and false on connection loss.
+
+==== Electron
+
+In Electron, each target connects to the tool via a separate websocket.
+
+Both the devtool and the target should receive the mutation:
+
+[source]
+-----
+(com.fulcrologic.devtools.common.built-in-mutations/devtool-connected {:connected?  open? mk/target-id target-id})
+-----
+
+where `open?` indicates if the connection was opened or closed, and the `target-id` indicates which thing connected/disconnected.
+
+== Supported Environments
+
+The supported environments for tools are Chrome Extensions and Devtools.
+The supported environments for targets are apps running in web pages.
+
+The first version of this library does not explicitly support a target running pretty much anywhere sente (websockets) works as a client. This includes CLJ, which *should* actually work without much (if any) change. I simply have not had time to test/debug that scenario.
+
+Technically a Tool implemented on the JVM in Clojure is also a use-case that should work, since sente/websockets should also work there. Again,
+
 == Copyright and License
 
 Copyright (c) 2017-2022, Fulcrologic, LLC

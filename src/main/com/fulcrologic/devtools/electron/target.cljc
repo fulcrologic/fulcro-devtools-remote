@@ -49,7 +49,8 @@
                 (when (not= was-open? open?)
                   ((:send-fn client) [:fulcrologic.devtool/event {mk/connected? open?
                                                                   mk/target-id  target-id}])
-                  (async-processor [(bi/devtool-connected {:connected? open?})]))))
+                  (async-processor [(bi/devtool-connected {:connected?  open?
+                                                           mk/target-id target-id})]))))
             client))
         (catch :default e
           (log/error e)))
