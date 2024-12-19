@@ -11,7 +11,7 @@
 (>defn connection-config [^Object conn]
   [::dp/DevToolConnection => [:map
                               [:active-requests {:optional true} [:map-of :uuid :async/channel]]
-                              [:target-id {:optional true} :uuid]
+                              [:target-id {:optional true} :uuid] ; ONLY IF target, NOT tool
                               [:description {:optional true} :string]
                               [:send-ch :async/channel]
                               [:async-processor fn?]]]
@@ -51,7 +51,8 @@
         connected? (mk/connected? message)
         target-id  (mk/target-id message)]
     (if (some? connected?)
-      (async-processor [(bi/devtool-connected {:connected? connected?})])
+      (async-processor [(bi/devtool-connected {:connected? connected?
+                                               :target-id target-id})])
       (when (or (nil? my-uuid) (= my-uuid target-id))
         (let [EQL        (mk/request message)
               request-id (mk/request-id message)]
@@ -79,4 +80,3 @@
               (log/error "Request to devtool timed out" EQL)
               {mk/error "Request timed out"})
             r))))))
-

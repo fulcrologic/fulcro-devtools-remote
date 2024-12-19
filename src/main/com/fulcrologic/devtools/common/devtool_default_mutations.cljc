@@ -22,7 +22,6 @@
   (action [{:keys [state]}]
     (swap! state assoc :devtool/active-targets [])))
 
-;; TASK: Better support for dropping a single target
 (resolvers/defmutation devtool-connected [{:fulcro/keys [app]} {:keys [connected?] :as params}]
   {::pc/sym `bi/devtool-connected}
   (when-not connected?
@@ -32,4 +31,3 @@
   {::pc/sym `bi/target-started}
   (comp/transact! app [(target-started params)])
   {})
-

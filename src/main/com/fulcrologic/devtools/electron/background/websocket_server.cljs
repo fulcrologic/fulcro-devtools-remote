@@ -4,7 +4,9 @@
     ["electron-settings" :as settings]
     [cljs.core.async :as async :refer [<! >! put! take!] :refer-macros [go go-loop]]
     [cljs.nodejs :as nodejs]
-    [com.fulcrologic.devtools.common.message-keys :as mk]  ; patches goog global for node
+    [clojure.set :as set]
+    [com.fulcrologic.devtools.common.built-in-mutations :as bi]
+    [com.fulcrologic.devtools.common.message-keys :as mk]   ; patches goog global for node
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.devtools.common.transit-packer :as tp]
     [com.fulcrologic.devtools.electron.background.agpatch]
@@ -97,7 +99,7 @@
          :csrf-token-fn nil
          :user-id-fn    :client-id})))
   (go-loop []
-    (when-some [{:keys [client-id event]} (<! (:ch-recv @channel-socket-server))]
+    (when-some [{:keys [client-id event] :as msg} (<! (:ch-recv @channel-socket-server))]
       (let [[event-type event-data] event]
         (case event-type
           :fulcrologic.devtool/event
@@ -107,10 +109,14 @@
             (send-to-devtool! event-data))
           :chsk/uidport-close
           (do
-            (log/debug "lost connection" client-id)
-            ;; TASK: Clear target
-            ;(send-to-devtool! {mk/request [(bi/ {})]})
-            (swap! target-id->client-id (fn [m] (enc/remove-vals (fn [v] (= v client-id)) m))))
+            (log/spy :info msg)
+            (let [cid->tid  (set/map-invert @target-id->client-id)
+                  target-id (log/spy :info (cid->tid (log/spy :info client-id)))]
+              (send-to-devtool! {mk/request    [(bi/devtool-connected {:connected? false
+                                                                       :target-id  target-id})]
+                                 mk/target-id  target-id
+                                 mk/request-id (random-uuid)})
+              (swap! target-id->client-id dissoc target-id)))
           (:chsk/uidport-open
             :chsk/ws-pong
             :chsk/ws-ping)
@@ -142,4 +148,7 @@
   (e/ipcMain.on "send"
     (fn handle-devtool-message [_ message]
       (let [msg (encode/read message)]
-        (send-to-target! msg)))))
+        (enc/try*
+          (send-to-target! msg)
+          (catch :all t
+            (log/warn t "Failed to send to target" {:msg msg})))))))
