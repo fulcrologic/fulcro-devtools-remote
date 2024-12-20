@@ -9,6 +9,9 @@
 
 == Devtools Remote
 
+
+image:https://img.shields.io/clojars/v/com.fulcrologic/fulcro-devools-remote.svg[link=https://clojars.org/com.fulcrologic/fulcro-devtools-remote]
+
 Beta quality. Some internals may still be refactored, but main public API should be stable.
 
 Devtools Remote supplies a Fulcro Remote abstraction that can be used for developing development tooling using Fulcro for the UI of the tool, such that the communication to the target of the tooling acts simply as a Fulcro remote where mutations, loads, and "server push" is supported without you having to write that plumbing.
