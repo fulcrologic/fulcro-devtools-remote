@@ -3,12 +3,13 @@
    Simply ferries messages between service worker and target(s) on the web page."
   (:require
     [com.fulcrologic.devtools.common.constants :as constants]
-    [com.fulcrologic.devtools.common.js-support :refer [js log!]]
+    [com.fulcrologic.devtools.common.js-support :refer [js]]
     [com.fulcrologic.devtools.common.js-wrappers :refer [add-on-message-listener! add-window-event-message-listener! has-document-attribute?
-                                                  post-message! post-window-message! runtime-connect!]]
+                                                         post-message! post-window-message! runtime-connect!]]
     [com.fulcrologic.devtools.common.schemas :refer [js-map]]
     [com.fulcrologic.devtools.common.utils :refer [isoget]]
-    [com.fulcrologic.guardrails.malli.core :refer [=> >defn]] ))
+    [com.fulcrologic.guardrails.malli.core :refer [=> >defn]]
+    [taoensso.encore :as enc]))
 
 (>defn send-to-target! [msg]
   [(js-map [constants/content-script->target-key :string]) => :nil]
@@ -39,10 +40,11 @@
 
 (>defn listen-to-target! [service-worker-port]
   [:chrome/service-worker-port => :nil]
-  (add-window-event-message-listener!
-    (fn [event]
-      (when-let [msg (isoget (.-data event) constants/target->content-script-key)]
-        (send-to-background! service-worker-port msg))))
+  #?(:cljs
+     (add-window-event-message-listener!
+       (fn [event]
+         (when-let [msg (enc/catching (isoget (.-data ^js event) constants/target->content-script-key))]
+           (send-to-background! service-worker-port msg)))))
   nil)
 
 (defn start! []
