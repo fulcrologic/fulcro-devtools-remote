@@ -20,7 +20,7 @@
   (reset! tab-id->content-script-connection {})
   (reset! tab-id->devtool-connection {}))
 
-(>defn connection-status-changed! [ports tab-id connected?]
+(defn connection-status-changed! [ports tab-id connected?]
   [[:vector [:or :nil :chrome/service-worker-port]] :int :boolean => :nil]
   (log! "Connection" tab-id connected?)
   (doseq [p ports

@@ -77,6 +77,6 @@
               [r channel] (async/alts! [response-channel timeout] :priority true)]
           (if (= channel timeout)
             (do
-              (log/error "Request to devtool timed out" EQL)
+              (log/debug "Request to devtool timed out (no devtool open?)" EQL)
               {mk/error "Request timed out"})
             r))))))

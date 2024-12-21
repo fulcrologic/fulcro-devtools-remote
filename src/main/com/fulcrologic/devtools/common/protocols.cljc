@@ -25,8 +25,8 @@
 
 (>defn connect! [factory options]
   [::DevToolConnectionFactory [:map
-                               [:description :string]
-                               [:tool-type :qualified-keyword]
+                               [:description {:optional true} :string]
+                               [:tool-type {:optional true} :qualified-keyword]
                                [:async-processor fn?]]
    => ::DevToolConnection]
   (-connect! factory options))

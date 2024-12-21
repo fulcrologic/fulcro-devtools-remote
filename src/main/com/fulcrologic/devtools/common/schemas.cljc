@@ -101,9 +101,9 @@
    [:map {:closed true}
     [mk/target-id :uuid]
     [mk/error {:optional true} :string]
-    [mk/request {:optional true} :vector]
+    [mk/request {:optional true} vector?]
     [mk/request-id {:optional true} :uuid]
-    [mk/active-targets {:optional true} [:map :uuid :string]]
+    [mk/active-targets {:optional true} [:map-of :uuid :string]]
     [mk/timestamp {:optional true} inst?]
     [mk/tab-id {:optional true} :int]
     [mk/response {:optional true} map?]]])

@@ -34,10 +34,9 @@
   (let [data (utils/strip-lambdas data)]
     (post-window-message! (js {constants/target->content-script-key (encode/write data)}))))
 
-(>defn event-data
+(defn event-data
   "Decode a js event"
   [event]
-  [:chrome.event/content-script->target => ::schema/devtool-message]
   (some-> event (isoget-in ["data" constants/content-script->target-key]) encode/read))
 
 (>defn devtool-message? [event]

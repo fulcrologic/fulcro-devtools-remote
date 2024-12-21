@@ -91,8 +91,8 @@
   [{:keys [target-id tool-type description async-processor] :as options}]
   [[:map
     [:target-id {:optional true} :uuid]
-    [:tool-type :qualified-keyword]
-    [:description :string]
+    [:tool-type {:optional true} :qualified-keyword]
+    [:description {:optional true} :string]
     [:async-processor {:optional true} fn?]] => (? ::dp/DevToolConnection)]
   (com.fulcrologic.devtools.common.target/ido
     (log/info "Devtool attempting to connect")
