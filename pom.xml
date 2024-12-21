@@ -4,7 +4,7 @@
     <packaging>jar</packaging>
     <groupId>com.fulcrologic</groupId>
     <artifactId>fulcro-devtools-remote</artifactId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>0.2.2</version>
     <name>fulcro-devtools-remote</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -28,7 +28,7 @@
         <url>https://github.com/fulcrologic/fulcro-devtools-remote</url>
         <connection>scm:git:git://github.com/fulcrologic/fulcro-devtools-remote.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/fulcrologic/fulcro-devtools-remote.git</developerConnection>
-      <tag>HEAD</tag>
+      <tag>fulcro-devtools-remote-0.2.2</tag>
   </scm>
     <build>
         <sourceDirectory>src/main</sourceDirectory>
