@@ -9,8 +9,7 @@
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.guardrails.malli.core :refer [=> >defn]]
-    [taoensso.encore :as enc]
-    [taoensso.timbre :as log]))
+    [taoensso.encore :as enc]))
 
 (>defn post-message! [msg]
   [:transit/encoded-string => :any]

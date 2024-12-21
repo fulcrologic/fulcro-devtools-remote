@@ -1,7 +1,6 @@
 (ns com.fulcrologic.devtools.electron.api.preload
   (:require
-    ["electron" :as e]
-    [taoensso.timbre :as log]))
+    ["electron" :as e]))
 
 (defn ^:export init []
   (e/contextBridge.exposeInMainWorld

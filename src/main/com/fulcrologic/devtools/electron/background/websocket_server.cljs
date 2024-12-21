@@ -10,6 +10,7 @@
     [com.fulcrologic.devtools.common.transit :as encode]
     [com.fulcrologic.devtools.common.transit-packer :as tp]
     [com.fulcrologic.devtools.electron.background.agpatch]
+    [edn-query-language.core :as eql]
     [taoensso.encore :as enc]
     [taoensso.sente.server-adapters.community.express :as sente-express]
     [taoensso.timbre :as log]))
@@ -84,12 +85,17 @@
     (catch :default e
       (log/error e))))
 
+(declare restart!)
 (defn send-to-target! [{::mk/keys [target-id] :as msg}]
   (if-not target-id
     (log/warn "Unable to find app-uuid in message:" msg)
     (let [{:keys [send-fn]} @channel-socket-server
-          client-id (get @target-id->client-id target-id)]
-      (send-fn client-id [:fulcrologic.devtool/event msg]))))
+          client-id (get @target-id->client-id target-id)
+          req       (mk/request msg)
+          {:keys [dispatch-key]} (if (vector? req) (eql/query->ast1 req))]
+      (if (and dispatch-key (= (name dispatch-key) "restart-websockets"))
+        (restart!) ;; FIXME: Restart works on the websockets, but now we're hosed
+        (send-fn client-id [:fulcrologic.devtool/event msg])))))
 
 (defn start-ws! []
   (when-not @channel-socket-server
@@ -109,9 +115,8 @@
             (send-to-devtool! event-data))
           :chsk/uidport-close
           (do
-            (log/spy :info msg)
             (let [cid->tid  (set/map-invert @target-id->client-id)
-                  target-id (log/spy :info (cid->tid (log/spy :info client-id)))]
+                  target-id (cid->tid client-id)]
               (send-to-devtool! {mk/request    [(bi/devtool-connected {:connected? false
                                                                        :target-id  target-id})]
                                  mk/target-id  target-id
@@ -129,22 +134,26 @@
       (log/info "Devtool listening on port " port)
       (reset! server-atom (start-web-server! port)))))
 
+;; FIXME: Doesn't work
 (defn restart!
   "Stop/start the websockets. Useful when changing ports."
   []
   (log/info "Stopping websockets.")
-  (when @server-atom ((:stop-fn @server-atom)))
-  (reset! channel-socket-server nil)
-  (reset! server-atom nil)
-  (start-ws!))
+  (when @server-atom
+    ((:stop-fn @server-atom)))
+  (js/setTimeout
+    (fn []
+      (reset! target-id->client-id {})
+      (reset! channel-socket-server nil)
+      (reset! server-atom nil)
+      (start-ws!))
+    2000))
 
 (defn start!
   "Call for overall devtool startup (once)"
   [^js web-content]
   (reset! content-atom web-content)
   (start-ws!)
-  ;(.on web-content "dom-ready" (fn on-inspect-reload-request-app-state [] (log/info "DOM READY")))
-  ;; LANDMARK: Hook up of incoming messages from dev tool
   (e/ipcMain.on "send"
     (fn handle-devtool-message [_ message]
       (let [msg (encode/read message)]
