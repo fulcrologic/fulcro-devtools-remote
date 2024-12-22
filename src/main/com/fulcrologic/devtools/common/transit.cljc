@@ -2,13 +2,17 @@
   (:refer-clojure :exclude [read])
   (:require
     [com.fulcrologic.devtools.common.utils :refer [strip-lambdas]]
-    [com.fulcrologic.fulcro.algorithms.transit :as ft]
+    #?(:cljs
+       [com.fulcrologic.fulcro.inspect.transit :as it]
+       :clj [com.fulcrologic.fulcro.algorithms.transit :as ft])
     [taoensso.timbre :as log]))
 
-(defn read [s] (ft/transit-str->clj s))
+(defn read [s] #?(:cljs (it/read s)
+                  :clj  (ft/transit-str->clj s)))
 
 (defn write [x]
   (try
-    (ft/transit-clj->str (strip-lambdas x) {:metadata? false})
+    #?(:cljs (it/write x)
+       :clj (ft/transit-clj->str (strip-lambdas x) {:metadata? false}))
     (catch #?(:cljs :default :clj Throwable) e
       (log/error e "Failed to serialize" x))))
