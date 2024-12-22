@@ -10,7 +10,7 @@
 == Devtools Remote
 
 
-image:https://img.shields.io/clojars/v/com.fulcrologic/fulcro-devools-remote.svg[link=https://clojars.org/com.fulcrologic/fulcro-devtools-remote]
+image:https://img.shields.io/clojars/v/com.fulcrologic/fulcro-devtools-remote.svg[link=https://clojars.org/com.fulcrologic/fulcro-devtools-remote]
 
 Beta quality. Some internals may still be refactored, but main public API should be stable.
 
