@@ -6,7 +6,7 @@
  :builds   {:demo                  {:target     :browser
                                     :output-dir "resources/public/js/demo"
                                     :asset-path "/js/demo"
-                                    :devtools   {:preloads           [com.fulcrologic.devtools.electron-preload]
+                                    :devtools   {:preloads           [com.fulcrologic.devtools.chrome-preload]
                                                  :after-load         target-app.main/refresh
                                                  :http-root          "resources/public"
                                                  :http-port          8080
@@ -22,7 +22,7 @@
                                     :output-dir "shells/chrome/js/extension"
                                     :asset-path "js/extension"
                                     :runtime    :custom
-                                    :modules    {:service-worker {:init-fn com.fulcrologic.devtools.chrome.background-worker/init}}}
+                                    :modules    {:service-worker {:entries [com.fulcrologic.devtools.chrome.background-worker]}}}
             :chrome-content-script {:target           :browser
                                     :output-dir       "shells/chrome/js/content-script"
                                     :asset-path       "js/content-script"

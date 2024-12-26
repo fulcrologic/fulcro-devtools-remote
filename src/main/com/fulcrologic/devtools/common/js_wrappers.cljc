@@ -19,6 +19,12 @@
   [fn? => :any]
   #?(:cljs (js/chrome.runtime.onConnect.addListener listener)))
 
+(>defn add-runtime-on-message-listener! [listener]
+  [fn? => :any]
+  #?(:cljs (js/chrome.runtime.onMessage.addListener listener)))
+
+(defn send-message! [msg] #?(:cljs (js/chrome.runtime.sendMessage (clj->js msg))))
+
 (>defn add-on-disconnect-listener! [port listener]
   [:chrome/service-worker-port fn? => :any]
   #?(:cljs (.addListener (.-onDisconnect ^js port) listener)))

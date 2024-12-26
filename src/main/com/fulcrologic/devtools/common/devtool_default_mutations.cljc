@@ -8,7 +8,8 @@
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
-    [com.wsscode.pathom.connect :as pc]))
+    [com.wsscode.pathom.connect :as pc]
+    [taoensso.timbre :as log]))
 
 (defsc Target [this {::mk/keys [target-id target-description] :as params}]
   {:query [::mk/target-id ::mk/target-description]
@@ -24,6 +25,7 @@
 
 (resolvers/defmutation devtool-connected [{:fulcro/keys [app]} {:keys [connected?] :as params}]
   {::pc/sym `bi/devtool-connected}
+  (log/info "devtool connected message" params)
   (when-not connected?
     (comp/transact! app [(clear-active-targets {})])))
 

@@ -13,11 +13,9 @@
   org.clojure/clojure        {:mvn/version "1.11.4"}
   org.clojure/core.async     {:mvn/version "1.6.681"}}
 
- :aliases {:dev  {:extra-paths ["src/example"]
-                  :extra-deps  {org.clojure/clojurescript                       {:mvn/version "1.11.132"}
-                                fulcrologic/fulcro-spec                         {:mvn/version "3.1.12"}
-                                com.google.javascript/closure-compiler-unshaded {:mvn/version "v20240317"}
-                                thheller/shadow-cljs                            {:mvn/version "2.28.19"}
-                                binaryage/devtools                              {:mvn/version "1.0.6"}}}
-           :test {:extra-paths ["src/test"]
-                  :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.12"}}}}}
+ :aliases {:dev {:extra-paths ["src/example"]
+                 :extra-deps  {org.clojure/clojurescript                       {:mvn/version "1.11.132"}
+                               fulcrologic/fulcro-spec                         {:mvn/version "3.1.12"}
+                               com.google.javascript/closure-compiler-unshaded {:mvn/version "v20240317"}
+                               thheller/shadow-cljs                            {:mvn/version "2.28.19"}
+                               binaryage/devtools                              {:mvn/version "1.0.6"}}}}}

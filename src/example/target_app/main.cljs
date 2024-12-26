@@ -2,15 +2,14 @@
   (:require
     [com.fulcrologic.devtools.common.target :as dt]
     [com.fulcrologic.devtools.devtool-io :as dev]
-    [common.target-impl]
-    [common.tool-api :as tapi]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom]
     [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
     [com.fulcrologic.fulcro.react.version18 :refer [with-react18]]
-    ))
+    [common.target-impl]
+    [common.tool-api :as tapi]))
 
 (defonce app1 (with-react18 (app/fulcro-app)))
 (defonce app2 (with-react18 (app/fulcro-app)))
