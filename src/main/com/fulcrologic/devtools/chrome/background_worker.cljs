@@ -9,7 +9,7 @@
         (= target "devtools")
         (do
           (set! (.-tabId msg) tab-id)
-          (js/chrome.runtime.sendMessage msg))
+          (.catch (js/chrome.runtime.sendMessage msg) identity))
 
         (and (= target "content_script") tab-id)
-        (js/chrome.tabs.sendMessage tab-id msg)))))
+        (.catch (js/chrome.tabs.sendMessage tab-id msg) identity)))))
