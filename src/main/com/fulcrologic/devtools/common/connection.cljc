@@ -55,10 +55,14 @@
                                                :target-id target-id})])
       (when (or (nil? my-uuid) (= my-uuid target-id))
         (let [EQL        (mk/request message)
-              request-id (mk/request-id message)]
+              request-id (mk/request-id message)
+              response   (mk/response message)
+              error      (mk/error message)]
           (cond
             (contains? active-requests request-id) (handle-response conn message)
             (and EQL request-id) (handle-devtool-request conn message)
+            ;; Silently ignore responses without matching active requests (fire-and-forget mutations)
+            (or response error) nil
             :else (log/error message)))))))
 
 (deftype Connection [vconfig]
