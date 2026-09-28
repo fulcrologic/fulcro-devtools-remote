@@ -158,7 +158,17 @@ you can customize it to manipulate things like menus. You can also use it unmodi
 
 The `src/example/devtool/electron/renderer.cljs` code is the tool entry point, and uses the same UI as chrome, it just requires different namespaces in order to set up the connection for electron.
 
-You'll need to do an `npm i` or `yarn` at the top level, and also in the shells/electron directory.
+You'll need to do a `pnpm install` at the top level, and also in the shells/electron directory. pnpm is configured
+(in `pnpm-workspace.yaml`) to never run dependency install scripts, so Electron's binary is not downloaded
+automatically. After installing, fetch it deliberately (in each directory where you need it):
+
+[source, bash]
+-----
+pnpm rebuild electron
+-----
+
+Likewise, electron-builder's `install-app-deps` is no longer a `postinstall` hook. Run `pnpm run install-app-deps` in
+shells/electron yourself when you need native dependencies rebuilt for Electron (e.g. before packaging).
 
 Building all of this means running a RELEASE build from shadow-cljs on the electron-main build, then WATCH the electron-renderer. In this case hot code reload DOES work, which makes electron a better and more convenient place to *work* on your tool.
 
@@ -167,7 +177,7 @@ To run the app:
 [source, bash]
 -----
 cd shells/electron
-electron .
+pnpm exec electron .
 -----
 
 === Setting up a Target
